@@ -14,6 +14,10 @@ import {
 import Logo from '../components/Logo';
 import {COLORS, SHADOW} from '../theme';
 
+/* =====================================================
+   OPTIONS
+===================================================== */
+
 const relationshipOptions = [
   'Spouse',
   'Adult Child',
@@ -38,23 +42,31 @@ const countryCodes = [
   {name: 'United Arab Emirates', code: '+971'},
 ];
 
+/* =====================================================
+   VALIDATION
+===================================================== */
+
 const EMAIL_RE =
-  /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.com$/i;
+  /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/i;
 
 const PHONE_RE = /^\d{10}$/;
 
 /*
- * More flexible name validation.
- *
  * Accepts:
- *   Asha Sharma
- *   Asha Priya Sharma
- *   Dr. Test Physician
- *   Dr Amit Sharma
- *   A. Sharma
+ * Asha Sharma
+ * Asha Priya Sharma
+ * Dr. Test Physician
+ * Dr Amit Sharma
+ * A. Sharma
+ *
+ * Requires 2–4 words.
  */
 const NAME_RE =
   /^[A-Za-z][A-Za-z.'-]*(?:\s+[A-Za-z][A-Za-z.'-]*){1,3}$/;
+
+/* =====================================================
+   HELPERS
+===================================================== */
 
 const emptyEmergency = () => ({
   name: '',
@@ -106,6 +118,7 @@ function dobError(value) {
   }
 
   const today = new Date();
+
   today.setHours(23, 59, 59, 999);
 
   if (date > today) {
@@ -126,6 +139,10 @@ function identifierError(value) {
     return 'Enter an email address or 10-digit mobile number.';
   }
 
+  /*
+   * If the first character is a digit,
+   * treat the identifier as a mobile number.
+   */
   if (/^\d/.test(v)) {
     if (!/^\d+$/.test(v)) {
       return 'Mobile number must contain digits only.';
@@ -139,7 +156,7 @@ function identifierError(value) {
   }
 
   if (!EMAIL_RE.test(v)) {
-    return 'Invalid email format. Use name@domain.com.';
+    return 'Enter a valid email address.';
   }
 
   return '';
@@ -213,6 +230,10 @@ function monthTitle(date) {
   });
 }
 
+/* =====================================================
+   MAIN SIGNUP SCREEN
+===================================================== */
+
 export default function SignupScreen({onBack, onComplete}) {
   const [step, setStep] = useState(1);
 
@@ -229,7 +250,6 @@ export default function SignupScreen({onBack, onComplete}) {
 
     patientName: '',
     patientDob: '',
-    age: '',
     gender: '',
     patientAddress: '',
     diagnosis: '',
@@ -250,15 +270,20 @@ export default function SignupScreen({onBack, onComplete}) {
   const [countryPicker, setCountryPicker] = useState(null);
 
   /*
-   * Calendar state
+   * Calendar:
    *
-   * 'caregiver' = caregiver DOB
-   * 'patient'   = patient DOB
+   * type = caregiver / patient
    */
   const [calendar, setCalendar] = useState(null);
-  const [calendarView, setCalendarView] = useState('days');
+
+  const [calendarView, setCalendarView] =
+    useState('days');
 
   const refs = useRef({});
+
+  /* =====================================================
+     FORM UPDATE
+  ===================================================== */
 
   const update = (key, value) => {
     setForm(previous => ({
@@ -278,7 +303,15 @@ export default function SignupScreen({onBack, onComplete}) {
     });
   };
 
-  const updateEmergency = (index, key, value) => {
+  /* =====================================================
+     EMERGENCY CONTACT UPDATE
+  ===================================================== */
+
+  const updateEmergency = (
+    index,
+    key,
+    value,
+  ) => {
     setEmergencyContacts(previous =>
       previous.map((contact, i) =>
         i === index
@@ -311,18 +344,30 @@ export default function SignupScreen({onBack, onComplete}) {
     setEmergencyContacts(previous =>
       previous.filter((_, i) => i !== index),
     );
+
+    /*
+     * Remove the corresponding validation error
+     * so stale errors don't remain in state.
+     */
+    setErrors(previous => {
+      const next = {...previous};
+
+      delete next[`emergency_${index}`];
+
+      return next;
+    });
   };
 
-  /*
-   * -------------------------
-   * VALIDATION
-   * -------------------------
-   */
+  /* =====================================================
+     STEP 1 VALIDATION
+  ===================================================== */
 
   const validateStep1 = () => {
     const e = {};
 
-    const idErr = identifierError(form.identifier);
+    const idErr = identifierError(
+      form.identifier,
+    );
 
     if (idErr) {
       e.identifier = idErr;
@@ -341,17 +386,26 @@ export default function SignupScreen({onBack, onComplete}) {
 
     if (!form.confirm) {
       e.confirm = 'Confirm your password.';
-    } else if (form.password !== form.confirm) {
+    } else if (
+      form.password !== form.confirm
+    ) {
       e.confirm = 'Passwords do not match.';
     }
 
     return e;
   };
 
+  /* =====================================================
+     STEP 2 VALIDATION
+  ===================================================== */
+
   const validateStep2 = () => {
     const e = {};
 
-    const nErr = nameError(form.name, 'Caregiver name');
+    const nErr = nameError(
+      form.name,
+      'Caregiver name',
+    );
 
     if (nErr) {
       e.name = nErr;
@@ -364,123 +418,179 @@ export default function SignupScreen({onBack, onComplete}) {
     }
 
     if (!form.address.trim()) {
-      e.address = 'Contact address is required.';
+      e.address =
+        'Contact address is required.';
     }
 
-    if (!form.relationship) {
-      e.relationship = 'Select a relationship.';
+    if (!relationshipOptions.includes(
+      form.relationship,
+    )) {
+      e.relationship =
+        'Select a relationship.';
     }
 
     return e;
   };
 
+  /* =====================================================
+     STEP 3 VALIDATION
+  ===================================================== */
+
   const validateStep3 = () => {
     const e = {};
 
-    const pnErr = nameError(
+    /* Patient name */
+
+    const patientNameErr = nameError(
       form.patientName,
       'Patient name',
     );
 
-    if (pnErr) {
-      e.patientName = pnErr;
+    if (patientNameErr) {
+      e.patientName = patientNameErr;
     }
 
-    const pdErr = dobError(form.patientDob);
+    /* Patient DOB */
 
-    if (pdErr) {
-      e.patientDob = pdErr;
-    }
-
-    const calculatedAge = calculateAgeFromDob(
+    const patientDobErr = dobError(
       form.patientDob,
     );
+
+    if (patientDobErr) {
+      e.patientDob = patientDobErr;
+    }
+
+    /* Age */
+
+    const calculatedAge =
+      calculateAgeFromDob(
+        form.patientDob,
+      );
 
     if (!calculatedAge) {
       e.age =
         'Age is calculated automatically from date of birth.';
     }
 
-    if (!form.gender) {
-      e.gender = 'Select Male, Female or Others.';
+    /* Gender */
+
+    if (
+      !genderOptions.includes(
+        form.gender,
+      )
+    ) {
+      e.gender =
+        'Select Male, Female or Others.';
     }
+
+    /* Address */
 
     if (!form.patientAddress.trim()) {
-      e.patientAddress = 'Current address is required.';
+      e.patientAddress =
+        'Current address is required.';
     }
+
+    /* Diagnosis */
 
     if (!form.diagnosis.trim()) {
-      e.diagnosis = 'Diagnosis is required.';
+      e.diagnosis =
+        'Diagnosis is required.';
     }
 
-    if (!severityOptions.includes(form.severity)) {
+    /* Severity */
+
+    if (
+      !severityOptions.includes(
+        form.severity,
+      )
+    ) {
       e.severity =
         'Choose Mild, Moderate or Severe.';
     }
+
+    /* Symptoms */
 
     if (!form.symptoms.trim()) {
       e.symptoms =
         'Enter the main symptoms or behaviours.';
     }
 
-    /*
-     * Physician validation
-     *
-     * This now correctly accepts:
-     * Dr. Test Physician
-     */
-    if (!form.doctorName.trim()) {
-      e.doctorName =
-        'Attending physician name is required.';
-    } else if (!NAME_RE.test(form.doctorName.trim())) {
+    /* Physician */
+
+    const physicianNameErr =
+      nameError(
+        form.doctorName,
+        'Attending physician name',
+      );
+
+    if (physicianNameErr) {
       e.doctorName =
         'Enter a valid physician name.';
     }
 
-    if (!PHONE_RE.test(form.doctorPhone)) {
+    if (
+      !PHONE_RE.test(
+        form.doctorPhone,
+      )
+    ) {
       e.doctorPhone =
         'Enter a valid 10-digit phone number.';
     }
 
-    emergencyContacts.forEach((contact, index) => {
-      if (
-        !contact.name.trim() ||
-        !PHONE_RE.test(contact.phone)
-      ) {
-        e[`emergency_${index}`] =
-          'Enter contact name and a valid 10-digit phone number.';
-      }
-    });
+    /* Emergency contacts */
+
+    emergencyContacts.forEach(
+      (contact, index) => {
+        const contactNameErr =
+          nameError(
+            contact.name,
+            'Contact name',
+          );
+
+        const phoneValid =
+          PHONE_RE.test(
+            contact.phone,
+          );
+
+        if (
+          contactNameErr ||
+          !phoneValid
+        ) {
+          e[`emergency_${index}`] =
+            'Enter a valid contact name and 10-digit phone number.';
+        }
+      },
+    );
 
     return e;
   };
 
-  /*
-   * -------------------------
-   * NEXT / BACK
-   * -------------------------
-   */
+  /* =====================================================
+     NEXT
+  ===================================================== */
 
   const next = () => {
     let e = {};
 
     if (step === 1) {
       e = validateStep1();
-    }
-
-    if (step === 2) {
+    } else if (step === 2) {
       e = validateStep2();
-    }
-
-    if (step === 3) {
+    } else if (step === 3) {
       e = validateStep3();
     }
 
     setErrors(e);
 
-    if (Object.keys(e).length > 0) {
+    if (
+      Object.keys(e).length > 0
+    ) {
       return;
     }
+
+    /*
+     * Continue to next step.
+     */
 
     if (step < 3) {
       setStep(previous => previous + 1);
@@ -488,38 +598,73 @@ export default function SignupScreen({onBack, onComplete}) {
     }
 
     /*
-     * v6 sends the complete caregiver + patient profile
-     * to App.js so it can be persisted and used by Home.
+     * Final submission.
+     *
+     * Age is calculated here instead of being
+     * stored separately in form state.
      */
+
+    const finalAge =
+      calculateAgeFromDob(
+        form.patientDob,
+      );
+
     onComplete({
       ...form,
-      caregiverName: form.name || 'Caregiver',
-      patientName: form.patientName || 'Patient',
-      patientDob: form.patientDob || '',
-      age: calculateAgeFromDob(form.patientDob),
-      emergencyContacts,
+
+      caregiverName:
+        form.name.trim() ||
+        'Caregiver',
+
+      patientName:
+        form.patientName.trim() ||
+        'Patient',
+
+      patientDob:
+        form.patientDob || '',
+
+      age: finalAge,
+
+      emergencyContacts:
+        emergencyContacts.map(
+          contact => ({
+            name: contact.name.trim(),
+            countryCode:
+              contact.countryCode,
+            phone: contact.phone,
+          }),
+        ),
     });
   };
 
+  /* =====================================================
+     BACK
+  ===================================================== */
+
   const back = () => {
     if (calendar) {
-      setCalendar(null);
+      closeCalendar();
+      return;
+    }
+
+    if (countryPicker) {
+      setCountryPicker(null);
       return;
     }
 
     if (step > 1) {
-      setStep(previous => previous - 1);
+      setStep(
+        previous => previous - 1,
+      );
       return;
     }
 
     onBack();
   };
 
-  /*
-   * -------------------------
-   * CALENDAR
-   * -------------------------
-   */
+  /* =====================================================
+     CALENDAR
+  ===================================================== */
 
   const openCalendar = type => {
     const currentValue =
@@ -527,21 +672,27 @@ export default function SignupScreen({onBack, onComplete}) {
         ? form.patientDob
         : form.dob;
 
-    const parsed = parseDate(currentValue);
+    const parsed =
+      parseDate(currentValue);
 
-    const initialDate = parsed || new Date();
+    const initialDate =
+      parsed || new Date();
 
     setCalendar({
       type,
-      month: initialDate.getMonth(),
-      year: initialDate.getFullYear(),
+      month:
+        initialDate.getMonth(),
+      year:
+        initialDate.getFullYear(),
     });
+
     setCalendarView('days');
 
     setErrors(previous => ({
       ...previous,
-      [type === 'patient' ? 'patientDob' : 'dob']:
-        undefined,
+      [type === 'patient'
+        ? 'patientDob'
+        : 'dob']: undefined,
     }));
   };
 
@@ -556,8 +707,11 @@ export default function SignupScreen({onBack, onComplete}) {
         return previous;
       }
 
-      let month = previous.month + direction;
-      let year = previous.year;
+      let month =
+        previous.month + direction;
+
+      let year =
+        previous.year;
 
       if (month < 0) {
         month = 11;
@@ -569,18 +723,25 @@ export default function SignupScreen({onBack, onComplete}) {
         year += 1;
       }
 
-      /*
-       * Don't allow navigation into future months.
-       */
       const today = new Date();
+
+      /*
+       * Prevent future months.
+       */
 
       if (
         year > today.getFullYear() ||
-        (year === today.getFullYear() &&
-          month > today.getMonth())
+        (year ===
+          today.getFullYear() &&
+          month >
+            today.getMonth())
       ) {
         return previous;
       }
+
+      /*
+       * Prevent dates before 1900.
+       */
 
       if (year < 1900) {
         return previous;
@@ -594,124 +755,245 @@ export default function SignupScreen({onBack, onComplete}) {
     });
   };
 
-  const selectCalendarYear = year => {
-    const today = new Date();
-    const safeYear = Math.min(year, today.getFullYear());
-    setCalendar(previous => previous ? {...previous, year: safeYear} : previous);
-    setCalendarView('months');
-  };
+  const selectCalendarYear =
+    year => {
+      const today = new Date();
 
-  const selectCalendarMonth = month => {
-    setCalendar(previous => previous ? {...previous, month} : previous);
-    setCalendarView('days');
-  };
+      const safeYear = Math.max(
+        1900,
+        Math.min(
+          year,
+          today.getFullYear(),
+        ),
+      );
+
+      setCalendar(previous =>
+        previous
+          ? {
+              ...previous,
+              year: safeYear,
+            }
+          : previous,
+      );
+
+      setCalendarView('months');
+    };
+
+  const selectCalendarMonth =
+    month => {
+      setCalendar(previous =>
+        previous
+          ? {
+              ...previous,
+              month,
+            }
+          : previous,
+      );
+
+      setCalendarView('days');
+    };
+
+  /* =====================================================
+     CALENDAR YEARS
+  ===================================================== */
 
   const calendarYears = useMemo(() => {
-    if (!calendar) return [];
-    const currentYear = new Date().getFullYear();
+    if (!calendar) {
+      return [];
+    }
+
+    const currentYear =
+      new Date().getFullYear();
+
     const years = [];
-    for (let year = currentYear; year >= 1900; year -= 1) years.push(year);
+
+    for (
+      let year = currentYear;
+      year >= 1900;
+      year -= 1
+    ) {
+      years.push(year);
+    }
+
     return years;
   }, [calendar]);
 
-  const calendarMonths = useMemo(() => {
-    return Array.from({length: 12}, (_, month) =>
-      new Date(2000, month, 1).toLocaleDateString('en-US', {month: 'short'}),
-    );
-  }, []);
+  /* =====================================================
+     CALENDAR MONTHS
+  ===================================================== */
+
+  const calendarMonths = useMemo(
+    () =>
+      Array.from(
+        {length: 12},
+        (_, month) =>
+          new Date(
+            2000,
+            month,
+            1,
+          ).toLocaleDateString(
+            'en-US',
+            {
+              month: 'short',
+            },
+          ),
+      ),
+    [],
+  );
+
+  /* =====================================================
+     SELECT DATE
+  ===================================================== */
 
   const selectDate = day => {
     if (!calendar) {
       return;
     }
 
-    const selected = new Date(
-      calendar.year,
-      calendar.month,
-      day,
-    );
+    const selected =
+      new Date(
+        calendar.year,
+        calendar.month,
+        day,
+      );
 
     const today = new Date();
 
-    today.setHours(23, 59, 59, 999);
+    today.setHours(
+      23,
+      59,
+      59,
+      999,
+    );
 
     if (selected > today) {
       return;
     }
 
-    if (selected.getFullYear() < 1900) {
+    if (
+      selected.getFullYear() < 1900
+    ) {
       return;
     }
 
-    const formatted = formatDate(selected);
+    const formatted =
+      formatDate(selected);
 
-    if (calendar.type === 'patient') {
-      update('patientDob', formatted);
+    if (
+      calendar.type ===
+      'patient'
+    ) {
       update(
-        'age',
-        calculateAgeFromDob(formatted),
+        'patientDob',
+        formatted,
       );
     } else {
-      update('dob', formatted);
+      update(
+        'dob',
+        formatted,
+      );
     }
 
-    setCalendar(null);
+    closeCalendar();
   };
+
+  /* =====================================================
+     CALENDAR DAYS
+  ===================================================== */
 
   const calendarDays = useMemo(() => {
     if (!calendar) {
       return [];
     }
 
-    const totalDays = getDaysInMonth(
-      calendar.year,
-      calendar.month,
-    );
+    const totalDays =
+      getDaysInMonth(
+        calendar.year,
+        calendar.month,
+      );
 
-    const firstDay = getFirstDayOfMonth(
-      calendar.year,
-      calendar.month,
-    );
+    const firstDay =
+      getFirstDayOfMonth(
+        calendar.year,
+        calendar.month,
+      );
 
     const cells = [];
 
-    for (let i = 0; i < firstDay; i++) {
+    /*
+     * Empty cells before first day.
+     */
+
+    for (
+      let i = 0;
+      i < firstDay;
+      i += 1
+    ) {
       cells.push(null);
     }
 
-    for (let day = 1; day <= totalDays; day++) {
+    /*
+     * Actual days.
+     */
+
+    for (
+      let day = 1;
+      day <= totalDays;
+      day += 1
+    ) {
       cells.push(day);
     }
 
     return cells;
   }, [calendar]);
 
-  const calendarSelectedDate = useMemo(() => {
-    if (!calendar) {
-      return null;
-    }
+  /* =====================================================
+     SELECTED CALENDAR DATE
+  ===================================================== */
 
-    const value =
-      calendar.type === 'patient'
-        ? form.patientDob
-        : form.dob;
+  const calendarSelectedDate =
+    useMemo(() => {
+      if (!calendar) {
+        return null;
+      }
 
-    return parseDate(value);
-  }, [
-    calendar,
-    form.patientDob,
-    form.dob,
-  ]);
+      const value =
+        calendar.type ===
+        'patient'
+          ? form.patientDob
+          : form.dob;
+
+      return parseDate(value);
+    }, [
+      calendar,
+      form.patientDob,
+      form.dob,
+    ]);
+
+  /* =====================================================
+     COUNTRY PICKER TITLE
+  ===================================================== */
 
   const countryListTitle =
     countryPicker === 'doctor'
       ? 'Physician country code'
       : 'Emergency contact country code';
 
+  /* =====================================================
+     AGE
+  ===================================================== */
+
   const age = useMemo(
-    () => calculateAgeFromDob(form.patientDob),
+    () =>
+      calculateAgeFromDob(
+        form.patientDob,
+      ),
     [form.patientDob],
   );
+
+  /* =====================================================
+     RENDER
+  ===================================================== */
 
   return (
     <KeyboardAvoidingView
@@ -723,17 +1005,26 @@ export default function SignupScreen({onBack, onComplete}) {
       }
     >
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={
+          styles.content
+        }
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={
+          false
+        }
         automaticallyAdjustKeyboardInsets
       >
-        {/* TOP */}
+        {/* =================================================
+            TOP
+        ================================================== */}
+
         <View style={styles.top}>
           <Pressable
             onPress={back}
             hitSlop={10}
-            style={styles.backButton}
+            style={
+              styles.backButton
+            }
           >
             <Text style={styles.back}>
               ‹ Back
@@ -747,7 +1038,10 @@ export default function SignupScreen({onBack, onComplete}) {
           </Text>
         </View>
 
-        {/* HEADER */}
+        {/* =================================================
+            HEADER
+        ================================================== */}
+
         <Text style={styles.eyebrow}>
           {step === 1
             ? 'CAREGIVER AUTHENTICATION'
@@ -772,9 +1066,9 @@ export default function SignupScreen({onBack, onComplete}) {
               : 'Keep the care team informed with the right context.'}
         </Text>
 
-        {/* =========================
+        {/* =================================================
             STEP 1
-        ========================== */}
+        ================================================== */}
 
         {step === 1 && (
           <>
@@ -782,12 +1076,19 @@ export default function SignupScreen({onBack, onComplete}) {
               refKey="identifier"
               refs={refs}
               label="Mobile or email"
-              value={form.identifier}
+              value={
+                form.identifier
+              }
               onChange={v =>
-                update('identifier', v)
+                update(
+                  'identifier',
+                  v,
+                )
               }
               placeholder="name@domain.com or 10-digit mobile"
-              error={errors.identifier}
+              error={
+                errors.identifier
+              }
               autoCapitalize="none"
               returnKeyType="next"
               onSubmitEditing={() =>
@@ -795,7 +1096,9 @@ export default function SignupScreen({onBack, onComplete}) {
               }
               hint={
                 form.identifier &&
-                /^\d/.test(form.identifier)
+                /^\d/.test(
+                  form.identifier,
+                )
                   ? `${form.identifier.length}/10 digits`
                   : form.identifier
                     ? 'Email format: name@domain.com'
@@ -809,10 +1112,15 @@ export default function SignupScreen({onBack, onComplete}) {
               label="Create password"
               value={form.password}
               onChange={v =>
-                update('password', v)
+                update(
+                  'password',
+                  v,
+                )
               }
               placeholder="Minimum 8 characters"
-              error={errors.password}
+              error={
+                errors.password
+              }
               password
               returnKeyType="next"
               onSubmitEditing={() =>
@@ -826,21 +1134,34 @@ export default function SignupScreen({onBack, onComplete}) {
               label="Confirm password"
               value={form.confirm}
               onChange={v =>
-                update('confirm', v)
+                update(
+                  'confirm',
+                  v,
+                )
               }
               placeholder="Re-enter password"
-              error={errors.confirm}
+              error={
+                errors.confirm
+              }
               password
               returnKeyType="done"
               onSubmitEditing={next}
             />
 
             <View style={styles.rule}>
-              <Text style={styles.ruleTitle}>
+              <Text
+                style={
+                  styles.ruleTitle
+                }
+              >
                 Password requirements
               </Text>
 
-              <Text style={styles.ruleText}>
+              <Text
+                style={
+                  styles.ruleText
+                }
+              >
                 At least 8 characters • letters •
                 numbers or symbols
               </Text>
@@ -848,9 +1169,9 @@ export default function SignupScreen({onBack, onComplete}) {
           </>
         )}
 
-        {/* =========================
+        {/* =================================================
             STEP 2
-        ========================== */}
+        ================================================== */}
 
         {step === 2 && (
           <>
@@ -867,7 +1188,9 @@ export default function SignupScreen({onBack, onComplete}) {
               autoCapitalize="words"
               returnKeyType="next"
               onSubmitEditing={() =>
-                openCalendar('caregiver')
+                openCalendar(
+                  'caregiver',
+                )
               }
               hint={
                 form.name
@@ -881,7 +1204,9 @@ export default function SignupScreen({onBack, onComplete}) {
               value={form.dob}
               placeholder="DD/MM/YYYY"
               onPress={() =>
-                openCalendar('caregiver')
+                openCalendar(
+                  'caregiver',
+                )
               }
               error={errors.dob}
               hint="Tap to choose date • Format: DD/MM/YYYY"
@@ -891,64 +1216,79 @@ export default function SignupScreen({onBack, onComplete}) {
               refKey="address"
               refs={refs}
               label="Contact address"
-              value={form.address}
+              value={
+                form.address
+              }
               onChange={v =>
-                update('address', v)
+                update(
+                  'address',
+                  v,
+                )
               }
               placeholder="Address"
-              error={errors.address}
+              error={
+                errors.address
+              }
               multiline
               returnKeyType="done"
             />
 
             <Text style={styles.label}>
-              Relationship to patient
+              Relationship to patient <Text style={styles.required}>*</Text>
             </Text>
 
             <View style={styles.chips}>
               {relationshipOptions.map(
-                option => (
-                  <Pressable
-                    key={option}
-                    onPress={() =>
-                      update(
-                        'relationship',
-                        option,
-                      )
-                    }
-                    style={[
-                      styles.chip,
-                      form.relationship ===
-                        option &&
-                        styles.chipActive,
-                    ]}
-                  >
-                    <Text
+                option => {
+                  const active =
+                    form.relationship ===
+                    option;
+
+                  return (
+                    <Pressable
+                      key={option}
+                      onPress={() =>
+                        update(
+                          'relationship',
+                          option,
+                        )
+                      }
                       style={[
-                        styles.chipText,
-                        form.relationship ===
-                          option &&
-                          styles.chipTextActive,
+                        styles.chip,
+                        active &&
+                          styles.chipActive,
                       ]}
                     >
-                      {option}
-                    </Text>
-                  </Pressable>
-                ),
+                      <Text
+                        style={[
+                          styles.chipText,
+                          active &&
+                            styles.chipTextActive,
+                        ]}
+                      >
+                        {option}
+                      </Text>
+                    </Pressable>
+                  );
+                },
               )}
             </View>
 
             {errors.relationship ? (
-              <Text style={styles.error}>
-                {errors.relationship}
+              <Text
+                style={styles.error}
+              >
+                {
+                  errors.relationship
+                }
               </Text>
             ) : null}
           </>
         )}
 
-        {/* =========================
+        {/* =================================================
             STEP 3
-        ========================== */}
+        ================================================== */}
 
         {step === 3 && (
           <>
@@ -956,7 +1296,9 @@ export default function SignupScreen({onBack, onComplete}) {
               refKey="patientName"
               refs={refs}
               label="Patient full name"
-              value={form.patientName}
+              value={
+                form.patientName
+              }
               onChange={v =>
                 update(
                   'patientName',
@@ -964,11 +1306,15 @@ export default function SignupScreen({onBack, onComplete}) {
                 )
               }
               placeholder="First Middle Last"
-              error={errors.patientName}
+              error={
+                errors.patientName
+              }
               autoCapitalize="words"
               returnKeyType="next"
               onSubmitEditing={() =>
-                openCalendar('patient')
+                openCalendar(
+                  'patient',
+                )
               }
               hint={
                 form.patientName
@@ -979,25 +1325,34 @@ export default function SignupScreen({onBack, onComplete}) {
 
             <DateField
               label="Date of birth"
-              value={form.patientDob}
+              value={
+                form.patientDob
+              }
               placeholder="DD/MM/YYYY"
               onPress={() =>
-                openCalendar('patient')
+                openCalendar(
+                  'patient',
+                )
               }
-              error={errors.patientDob}
+              error={
+                errors.patientDob
+              }
               hint="Tap to choose date • Age is calculated automatically"
             />
 
             {/* AGE */}
+
             <View style={styles.field}>
               <Text style={styles.label}>
-                Age
+                Age <Text style={styles.required}>*</Text>
               </Text>
 
               <View
                 style={[
                   styles.inputWrap,
                   styles.readOnly,
+                  errors.age &&
+                    styles.inputError,
                 ]}
               >
                 <Text
@@ -1014,52 +1369,61 @@ export default function SignupScreen({onBack, onComplete}) {
               </View>
 
               {errors.age ? (
-                <Text style={styles.error}>
+                <Text
+                  style={styles.error}
+                >
                   {errors.age}
                 </Text>
               ) : null}
             </View>
 
             {/* GENDER */}
+
             <Text style={styles.label}>
-              Gender
+              Gender <Text style={styles.required}>*</Text>
             </Text>
 
             <View style={styles.chips}>
               {genderOptions.map(
-                option => (
-                  <Pressable
-                    key={option}
-                    onPress={() =>
-                      update(
-                        'gender',
-                        option,
-                      )
-                    }
-                    style={[
-                      styles.chip,
-                      form.gender ===
-                        option &&
-                        styles.chipActive,
-                    ]}
-                  >
-                    <Text
+                option => {
+                  const active =
+                    form.gender ===
+                    option;
+
+                  return (
+                    <Pressable
+                      key={option}
+                      onPress={() =>
+                        update(
+                          'gender',
+                          option,
+                        )
+                      }
                       style={[
-                        styles.chipText,
-                        form.gender ===
-                          option &&
-                          styles.chipTextActive,
+                        styles.chip,
+                        active &&
+                          styles.chipActive,
                       ]}
                     >
-                      {option}
-                    </Text>
-                  </Pressable>
-                ),
+                      <Text
+                        style={[
+                          styles.chipText,
+                          active &&
+                            styles.chipTextActive,
+                        ]}
+                      >
+                        {option}
+                      </Text>
+                    </Pressable>
+                  );
+                },
               )}
             </View>
 
             {errors.gender ? (
-              <Text style={styles.error}>
+              <Text
+                style={styles.error}
+              >
                 {errors.gender}
               </Text>
             ) : null}
@@ -1068,7 +1432,9 @@ export default function SignupScreen({onBack, onComplete}) {
               refKey="patientAddress"
               refs={refs}
               label="Current address"
-              value={form.patientAddress}
+              value={
+                form.patientAddress
+              }
               onChange={v =>
                 update(
                   'patientAddress',
@@ -1076,7 +1442,9 @@ export default function SignupScreen({onBack, onComplete}) {
                 )
               }
               placeholder="Patient address"
-              error={errors.patientAddress}
+              error={
+                errors.patientAddress
+              }
               multiline
               returnKeyType="next"
               onSubmitEditing={() =>
@@ -1088,7 +1456,9 @@ export default function SignupScreen({onBack, onComplete}) {
               refKey="diagnosis"
               refs={refs}
               label="Dementia diagnosis"
-              value={form.diagnosis}
+              value={
+                form.diagnosis
+              }
               onChange={v =>
                 update(
                   'diagnosis',
@@ -1096,7 +1466,9 @@ export default function SignupScreen({onBack, onComplete}) {
                 )
               }
               placeholder="e.g. Alzheimer's, Vascular"
-              error={errors.diagnosis}
+              error={
+                errors.diagnosis
+              }
               returnKeyType="next"
               onSubmitEditing={() =>
                 focus('symptoms')
@@ -1104,45 +1476,52 @@ export default function SignupScreen({onBack, onComplete}) {
             />
 
             {/* SEVERITY */}
+
             <Text style={styles.label}>
-              Current stage / severity
+              Current stage / severity <Text style={styles.required}>*</Text>
             </Text>
 
             <View style={styles.chips}>
               {severityOptions.map(
-                option => (
-                  <Pressable
-                    key={option}
-                    onPress={() =>
-                      update(
-                        'severity',
-                        option,
-                      )
-                    }
-                    style={[
-                      styles.chip,
-                      form.severity ===
-                        option &&
-                        styles.chipActive,
-                    ]}
-                  >
-                    <Text
+                option => {
+                  const active =
+                    form.severity ===
+                    option;
+
+                  return (
+                    <Pressable
+                      key={option}
+                      onPress={() =>
+                        update(
+                          'severity',
+                          option,
+                        )
+                      }
                       style={[
-                        styles.chipText,
-                        form.severity ===
-                          option &&
-                          styles.chipTextActive,
+                        styles.chip,
+                        active &&
+                          styles.chipActive,
                       ]}
                     >
-                      {option}
-                    </Text>
-                  </Pressable>
-                ),
+                      <Text
+                        style={[
+                          styles.chipText,
+                          active &&
+                            styles.chipTextActive,
+                        ]}
+                      >
+                        {option}
+                      </Text>
+                    </Pressable>
+                  );
+                },
               )}
             </View>
 
             {errors.severity ? (
-              <Text style={styles.error}>
+              <Text
+                style={styles.error}
+              >
                 {errors.severity}
               </Text>
             ) : null}
@@ -1151,7 +1530,9 @@ export default function SignupScreen({onBack, onComplete}) {
               refKey="symptoms"
               refs={refs}
               label="Primary symptoms & behaviours"
-              value={form.symptoms}
+              value={
+                form.symptoms
+              }
               onChange={v =>
                 update(
                   'symptoms',
@@ -1159,7 +1540,9 @@ export default function SignupScreen({onBack, onComplete}) {
                 )
               }
               placeholder="Memory loss, wandering risk..."
-              error={errors.symptoms}
+              error={
+                errors.symptoms
+              }
               multiline
               returnKeyType="next"
               onSubmitEditing={() =>
@@ -1167,11 +1550,15 @@ export default function SignupScreen({onBack, onComplete}) {
               }
             />
 
-            {/* =====================
+            {/* =================================================
                 PHYSICIAN
-            ====================== */}
+            ================================================== */}
 
-            <Text style={styles.sectionTitle}>
+            <Text
+              style={
+                styles.sectionTitle
+              }
+            >
               Attending physician
             </Text>
 
@@ -1179,7 +1566,9 @@ export default function SignupScreen({onBack, onComplete}) {
               refKey="doctorName"
               refs={refs}
               label="Physician name"
-              value={form.doctorName}
+              value={
+                form.doctorName
+              }
               onChange={v =>
                 update(
                   'doctorName',
@@ -1187,11 +1576,15 @@ export default function SignupScreen({onBack, onComplete}) {
                 )
               }
               placeholder="Dr. First Last"
-              error={errors.doctorName}
+              error={
+                errors.doctorName
+              }
               autoCapitalize="words"
               returnKeyType="next"
               onSubmitEditing={() =>
-                focus('doctorPhone')
+                focus(
+                  'doctorPhone',
+                )
               }
               hint={
                 form.doctorName
@@ -1206,19 +1599,24 @@ export default function SignupScreen({onBack, onComplete}) {
                 form.doctorCountryCode
               }
               onCountryPress={() =>
-                setCountryPicker('doctor')
+                setCountryPicker(
+                  'doctor',
+                )
               }
-              value={form.doctorPhone}
+              value={
+                form.doctorPhone
+              }
               onChange={v =>
                 update(
                   'doctorPhone',
-                  digitsOnly(v).slice(
-                    0,
-                    10,
-                  ),
+                  digitsOnly(
+                    v,
+                  ).slice(0, 10),
                 )
               }
-              error={errors.doctorPhone}
+              error={
+                errors.doctorPhone
+              }
               refKey="doctorPhone"
               refs={refs}
               onSubmitEditing={() =>
@@ -1228,9 +1626,9 @@ export default function SignupScreen({onBack, onComplete}) {
               }
             />
 
-            {/* =====================
+            {/* =================================================
                 EMERGENCY CONTACTS
-            ====================== */}
+            ================================================== */}
 
             <View
               style={
@@ -1250,14 +1648,16 @@ export default function SignupScreen({onBack, onComplete}) {
                   styles.contactCount
                 }
               >
-                {emergencyContacts.length}
+                {
+                  emergencyContacts.length
+                }
               </Text>
             </View>
 
             {emergencyContacts.map(
               (contact, index) => (
                 <View
-                  key={index}
+                  key={`emergency-${index}`}
                   style={
                     styles.contactCard
                   }
@@ -1283,6 +1683,7 @@ export default function SignupScreen({onBack, onComplete}) {
                             index,
                           )
                         }
+                        hitSlop={8}
                       >
                         <Text
                           style={
@@ -1299,7 +1700,9 @@ export default function SignupScreen({onBack, onComplete}) {
                     refKey={`emergency_${index}_name`}
                     refs={refs}
                     label="Contact name"
-                    value={contact.name}
+                    value={
+                      contact.name
+                    }
                     onChange={v =>
                       updateEmergency(
                         index,
@@ -1323,22 +1726,24 @@ export default function SignupScreen({onBack, onComplete}) {
                       contact.countryCode
                     }
                     onCountryPress={() =>
-                      setCountryPicker({
-                        type: 'emergency',
-                        index,
-                      })
+                      setCountryPicker(
+                        {
+                          type:
+                            'emergency',
+                          index,
+                        },
+                      )
                     }
-                    value={contact.phone}
+                    value={
+                      contact.phone
+                    }
                     onChange={v =>
                       updateEmergency(
                         index,
                         'phone',
                         digitsOnly(
                           v,
-                        ).slice(
-                          0,
-                          10,
-                        ),
+                        ).slice(0, 10),
                       )
                     }
                     refKey={`emergency_${index}_phone`}
@@ -1357,12 +1762,16 @@ export default function SignupScreen({onBack, onComplete}) {
             )}
 
             <Pressable
-              onPress={addEmergency}
+              onPress={
+                addEmergency
+              }
               style={
                 styles.addContactButton
               }
             >
-              <Text style={styles.plus}>
+              <Text
+                style={styles.plus}
+              >
                 ＋
               </Text>
 
@@ -1377,34 +1786,39 @@ export default function SignupScreen({onBack, onComplete}) {
           </>
         )}
 
-        {/* =========================
+        {/* =================================================
             MAIN BUTTON
-        ========================== */}
+        ================================================== */}
 
         <Pressable
           onPress={next}
           style={({pressed}) => [
             styles.button,
-            pressed && styles.pressed,
+            pressed &&
+              styles.pressed,
           ]}
         >
           <Text
-            style={styles.buttonText}
+            style={
+              styles.buttonText
+            }
           >
             {step === 3
               ? 'Create Account'
               : 'Continue'}
           </Text>
 
-          <Text style={styles.arrow}>
+          <Text
+            style={styles.arrow}
+          >
             →
           </Text>
         </Pressable>
       </ScrollView>
 
-      {/* =========================
+      {/* =================================================
           COUNTRY CODE MODAL
-      ========================== */}
+      ================================================== */}
 
       <Modal
         visible={!!countryPicker}
@@ -1441,6 +1855,7 @@ export default function SignupScreen({onBack, onComplete}) {
                     null,
                   )
                 }
+                hitSlop={8}
               >
                 <Text
                   style={
@@ -1474,9 +1889,9 @@ export default function SignupScreen({onBack, onComplete}) {
                           country.code,
                         );
                       } else if (
-                        countryPicker
-                          ?.type ===
-                        'emergency'
+                        countryPicker &&
+                        countryPicker.type ===
+                          'emergency'
                       ) {
                         updateEmergency(
                           countryPicker.index,
@@ -1495,7 +1910,9 @@ export default function SignupScreen({onBack, onComplete}) {
                         styles.countryName
                       }
                     >
-                      {country.name}
+                      {
+                        country.name
+                      }
                     </Text>
 
                     <Text
@@ -1503,7 +1920,9 @@ export default function SignupScreen({onBack, onComplete}) {
                         styles.countryCode
                       }
                     >
-                      {country.code}
+                      {
+                        country.code
+                      }
                     </Text>
                   </Pressable>
                 ),
@@ -1513,9 +1932,9 @@ export default function SignupScreen({onBack, onComplete}) {
         </View>
       </Modal>
 
-      {/* =========================
+      {/* =================================================
           DOB CALENDAR MODAL
-      ========================== */}
+      ================================================== */}
 
       <Modal
         visible={!!calendar}
@@ -1535,6 +1954,8 @@ export default function SignupScreen({onBack, onComplete}) {
               styles.calendarCard
             }
           >
+            {/* CALENDAR HEADER */}
+
             <View
               style={
                 styles.calendarHeaderTop
@@ -1569,6 +1990,7 @@ export default function SignupScreen({onBack, onComplete}) {
                 style={
                   styles.calendarClose
                 }
+                hitSlop={8}
               >
                 <Text
                   style={
@@ -1582,165 +2004,393 @@ export default function SignupScreen({onBack, onComplete}) {
 
             {calendar ? (
               <>
-                <View style={styles.calendarSelectorRow}>
-                  <Pressable onPress={() => setCalendarView('months')} style={[styles.calendarSelector, calendarView === 'months' && styles.calendarSelectorActive]}>
-                    <Text style={[styles.calendarSelectorText, calendarView === 'months' && styles.calendarSelectorTextActive]}>
-                      {new Date(calendar.year, calendar.month, 1).toLocaleDateString('en-US', {month: 'long'})}
+                {/* MONTH / YEAR SELECTORS */}
+
+                <View
+                  style={
+                    styles.calendarSelectorRow
+                  }
+                >
+                  <Pressable
+                    onPress={() =>
+                      setCalendarView(
+                        'months',
+                      )
+                    }
+                    style={[
+                      styles.calendarSelector,
+                      calendarView ===
+                        'months' &&
+                        styles.calendarSelectorActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.calendarSelectorText,
+                        calendarView ===
+                          'months' &&
+                          styles.calendarSelectorTextActive,
+                      ]}
+                    >
+                      {new Date(
+                        calendar.year,
+                        calendar.month,
+                        1,
+                      ).toLocaleDateString(
+                        'en-US',
+                        {
+                          month:
+                            'long',
+                        },
+                      )}
                     </Text>
                   </Pressable>
-                  <Pressable onPress={() => setCalendarView('years')} style={[styles.calendarSelector, calendarView === 'years' && styles.calendarSelectorActive]}>
-                    <Text style={[styles.calendarSelectorText, calendarView === 'years' && styles.calendarSelectorTextActive]}>
-                      {calendar.year}
+
+                  <Pressable
+                    onPress={() =>
+                      setCalendarView(
+                        'years',
+                      )
+                    }
+                    style={[
+                      styles.calendarSelector,
+                      calendarView ===
+                        'years' &&
+                        styles.calendarSelectorActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.calendarSelectorText,
+                        calendarView ===
+                          'years' &&
+                          styles.calendarSelectorTextActive,
+                      ]}
+                    >
+                      {
+                        calendar.year
+                      }
                     </Text>
                   </Pressable>
                 </View>
 
-                {calendarView === 'years' ? (
-                  <ScrollView style={styles.yearPicker} showsVerticalScrollIndicator={false}>
-                    <View style={styles.yearGrid}>
-                      {calendarYears.map(year => {
-                        const active = year === calendar.year;
-                        return (
-                          <Pressable key={year} onPress={() => selectCalendarYear(year)} style={[styles.yearCell, active && styles.yearCellActive]}>
-                            <Text style={[styles.yearText, active && styles.yearTextActive]}>{year}</Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  </ScrollView>
-                ) : calendarView === 'months' ? (
-                  <View style={styles.monthGrid}>
-                    {calendarMonths.map((month, index) => {
-                      const active = index === calendar.month;
-                      const future = calendar.year === new Date().getFullYear() && index > new Date().getMonth();
-                      return (
-                        <Pressable key={month} disabled={future} onPress={() => selectCalendarMonth(index)} style={[styles.monthCell, active && styles.monthCellActive, future && styles.monthCellDisabled]}>
-                          <Text style={[styles.monthText, active && styles.monthTextActive]}>{month}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                ) : (
-                  <>
-                    <View style={styles.calendarMonthRow}>
-                      <Pressable onPress={() => changeMonth(-1)} style={styles.monthArrow}>
-                        <Text style={styles.monthArrowText}>‹</Text>
-                      </Pressable>
-                      <Text style={styles.monthTitle}>{monthTitle(new Date(calendar.year, calendar.month, 1))}</Text>
-                      <Pressable onPress={() => changeMonth(1)} style={styles.monthArrow}>
-                        <Text style={styles.monthArrowText}>›</Text>
-                      </Pressable>
-                    </View>
-                <View
-                  style={
-                    styles.weekRow
-                  }
-                >
-                  {[
-                    'Sun',
-                    'Mon',
-                    'Tue',
-                    'Wed',
-                    'Thu',
-                    'Fri',
-                    'Sat',
-                  ].map(day => (
-                    <Text
-                      key={day}
+                {/* =================================================
+                    YEAR VIEW
+                ================================================== */}
+
+                {calendarView ===
+                'years' ? (
+                  <ScrollView
+                    style={
+                      styles.yearPicker
+                    }
+                    showsVerticalScrollIndicator={
+                      false
+                    }
+                  >
+                    <View
                       style={
-                        styles.weekDay
+                        styles.yearGrid
                       }
                     >
-                      {day}
-                    </Text>
-                  ))}
-                </View>
+                      {calendarYears.map(
+                        year => {
+                          const active =
+                            year ===
+                            calendar.year;
 
-                <View
-                  style={
-                    styles.calendarGrid
-                  }
-                >
-                  {calendarDays.map(
-                    (day, index) => {
-                      if (day === null) {
+                          return (
+                            <Pressable
+                              key={year}
+                              onPress={() =>
+                                selectCalendarYear(
+                                  year,
+                                )
+                              }
+                              style={[
+                                styles.yearCell,
+                                active &&
+                                  styles.yearCellActive,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.yearText,
+                                  active &&
+                                    styles.yearTextActive,
+                                ]}
+                              >
+                                {
+                                  year
+                                }
+                              </Text>
+                            </Pressable>
+                          );
+                        },
+                      )}
+                    </View>
+                  </ScrollView>
+                ) : calendarView ===
+                  'months' ? (
+                  /* =================================================
+                     MONTH VIEW
+                  ================================================== */
+
+                  <View
+                    style={
+                      styles.monthGrid
+                    }
+                  >
+                    {calendarMonths.map(
+                      (
+                        month,
+                        index,
+                      ) => {
+                        const active =
+                          index ===
+                          calendar.month;
+
+                        const today =
+                          new Date();
+
+                        const future =
+                          calendar.year ===
+                            today.getFullYear() &&
+                          index >
+                            today.getMonth();
+
                         return (
-                          <View
-                            key={`empty-${index}`}
-                            style={
-                              styles.dayCell
+                          <Pressable
+                            key={month}
+                            disabled={
+                              future
                             }
-                          />
-                        );
-                      }
-
-                      const date =
-                        new Date(
-                          calendar.year,
-                          calendar.month,
-                          day,
-                        );
-
-                      const today =
-                        new Date();
-
-                      const isFuture =
-                        date > today;
-
-                      const isSelected =
-                        isSameDate(
-                          date,
-                          calendarSelectedDate,
-                        );
-
-                      const isToday =
-                        isSameDate(
-                          date,
-                          today,
-                        );
-
-                      return (
-                        <Pressable
-                          key={day}
-                          disabled={
-                            isFuture
-                          }
-                          onPress={() =>
-                            selectDate(
-                              day,
-                            )
-                          }
-                          style={[
-                            styles.dayCell,
-                            isSelected &&
-                              styles.dayCellSelected,
-                            isToday &&
-                              !isSelected &&
-                              styles.dayCellToday,
-                            isFuture &&
-                              styles.dayCellDisabled,
-                          ]}
-                        >
-                          <Text
+                            onPress={() =>
+                              selectCalendarMonth(
+                                index,
+                              )
+                            }
                             style={[
-                              styles.dayText,
-                              isSelected &&
-                                styles.dayTextSelected,
-                              isFuture &&
-                                styles.dayTextDisabled,
+                              styles.monthCell,
+                              active &&
+                                styles.monthCellActive,
+                              future &&
+                                styles.monthCellDisabled,
                             ]}
+                          >
+                            <Text
+                              style={[
+                                styles.monthText,
+                                active &&
+                                  styles.monthTextActive,
+                              ]}
+                            >
+                              {
+                                month
+                              }
+                            </Text>
+                          </Pressable>
+                        );
+                      },
+                    )}
+                  </View>
+                ) : (
+                  /* =================================================
+                     DAY VIEW
+                  ================================================== */
+
+                  <>
+                    <View
+                      style={
+                        styles.calendarMonthRow
+                      }
+                    >
+                      <Pressable
+                        onPress={() =>
+                          changeMonth(
+                            -1,
+                          )
+                        }
+                        style={
+                          styles.monthArrow
+                        }
+                        hitSlop={5}
+                      >
+                        <Text
+                          style={
+                            styles.monthArrowText
+                          }
+                        >
+                          ‹
+                        </Text>
+                      </Pressable>
+
+                      <Text
+                        style={
+                          styles.monthTitle
+                        }
+                      >
+                        {monthTitle(
+                          new Date(
+                            calendar.year,
+                            calendar.month,
+                            1,
+                          ),
+                        )}
+                      </Text>
+
+                      <Pressable
+                        onPress={() =>
+                          changeMonth(
+                            1,
+                          )
+                        }
+                        style={
+                          styles.monthArrow
+                        }
+                        hitSlop={5}
+                      >
+                        <Text
+                          style={
+                            styles.monthArrowText
+                          }
+                        >
+                          ›
+                        </Text>
+                      </Pressable>
+                    </View>
+
+                    {/* WEEK DAYS */}
+
+                    <View
+                      style={
+                        styles.weekRow
+                      }
+                    >
+                      {[
+                        'Sun',
+                        'Mon',
+                        'Tue',
+                        'Wed',
+                        'Thu',
+                        'Fri',
+                        'Sat',
+                      ].map(
+                        day => (
+                          <Text
+                            key={day}
+                            style={
+                              styles.weekDay
+                            }
                           >
                             {day}
                           </Text>
-                        </Pressable>
-                      );
-                    },
-                  )}
-                </View>
+                        ),
+                      )}
+                    </View>
 
-                <Text style={styles.calendarHint}>
-                  Select the actual date of birth. You can switch between year, month and day for faster selection.
-                </Text>
+                    {/* DAYS */}
+
+                    <View
+                      style={
+                        styles.calendarGrid
+                      }
+                    >
+                      {calendarDays.map(
+                        (
+                          day,
+                          index,
+                        ) => {
+                          if (
+                            day ===
+                            null
+                          ) {
+                            return (
+                              <View
+                                key={`empty-${index}`}
+                                style={
+                                  styles.dayCell
+                                }
+                              />
+                            );
+                          }
+
+                          const date =
+                            new Date(
+                              calendar.year,
+                              calendar.month,
+                              day,
+                            );
+
+                          const today =
+                            new Date();
+
+                          const isFuture =
+                            date >
+                            today;
+
+                          const isSelected =
+                            isSameDate(
+                              date,
+                              calendarSelectedDate,
+                            );
+
+                          const isToday =
+                            isSameDate(
+                              date,
+                              today,
+                            );
+
+                          return (
+                            <Pressable
+                              key={day}
+                              disabled={
+                                isFuture
+                              }
+                              onPress={() =>
+                                selectDate(
+                                  day,
+                                )
+                              }
+                              style={[
+                                styles.dayCell,
+                                isSelected &&
+                                  styles.dayCellSelected,
+                                isToday &&
+                                  !isSelected &&
+                                  styles.dayCellToday,
+                                isFuture &&
+                                  styles.dayCellDisabled,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.dayText,
+                                  isSelected &&
+                                    styles.dayTextSelected,
+                                  isFuture &&
+                                    styles.dayTextDisabled,
+                                ]}
+                              >
+                                {
+                                  day
+                                }
+                              </Text>
+                            </Pressable>
+                          );
+                        },
+                      )}
+                    </View>
+
+                    <Text
+                      style={
+                        styles.calendarHint
+                      }
+                    >
+                      Select the actual date of birth. You can
+                      switch between year, month and day for
+                      faster selection.
+                    </Text>
                   </>
                 )}
               </>
@@ -1767,14 +2417,15 @@ function DateField({
   return (
     <View style={styles.field}>
       <Text style={styles.label}>
-        {label}
+        {label} <Text style={styles.required}>*</Text>
       </Text>
 
       <Pressable
         onPress={onPress}
         style={[
           styles.inputWrap,
-          error && styles.inputError,
+          error &&
+            styles.inputError,
         ]}
       >
         <Text
@@ -1840,17 +2491,20 @@ const PhoneField = React.forwardRef(
     return (
       <View style={styles.field}>
         <Text style={styles.label}>
-          {label}
+          {label} <Text style={styles.required}>*</Text>
         </Text>
 
         <View
           style={[
             styles.inputWrap,
-            error && styles.inputError,
+            error &&
+              styles.inputError,
           ]}
         >
           <Pressable
-            onPress={onCountryPress}
+            onPress={
+              onCountryPress
+            }
             style={
               styles.countryButton
             }
@@ -1885,12 +2539,16 @@ const PhoneField = React.forwardRef(
               }
             }}
             value={value}
-            onChangeText={onChange}
+            onChangeText={
+              onChange
+            }
             placeholder="10-digit mobile number"
             placeholderTextColor={
               COLORS.muted
             }
-            style={styles.input}
+            style={
+              styles.input
+            }
             keyboardType="phone-pad"
             maxLength={10}
             returnKeyType="done"
@@ -1947,7 +2605,7 @@ const Field = React.forwardRef(
     return (
       <View style={styles.field}>
         <Text style={styles.label}>
-          {label}
+          {label} <Text style={styles.required}>*</Text>
         </Text>
 
         <View
@@ -1955,7 +2613,8 @@ const Field = React.forwardRef(
             styles.inputWrap,
             multiline &&
               styles.multilineWrap,
-            error && styles.inputError,
+            error &&
+              styles.inputError,
           ]}
         >
           <TextInput
@@ -1971,8 +2630,12 @@ const Field = React.forwardRef(
               }
             }}
             value={value}
-            onChangeText={onChange}
-            placeholder={placeholder}
+            onChangeText={
+              onChange
+            }
+            placeholder={
+              placeholder
+            }
             placeholderTextColor={
               COLORS.muted
             }
@@ -1992,8 +2655,12 @@ const Field = React.forwardRef(
             keyboardType={
               keyboardType
             }
-            multiline={multiline}
-            maxLength={maxLength}
+            multiline={
+              multiline
+            }
+            maxLength={
+              maxLength
+            }
             returnKeyType={
               returnKeyType
             }
@@ -2063,6 +2730,10 @@ const styles = StyleSheet.create({
     paddingBottom: 55,
   },
 
+  /* =================================================
+     TOP
+  ================================================== */
+
   top: {
     height: 50,
     flexDirection: 'row',
@@ -2090,6 +2761,10 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
+  /* =================================================
+     HEADER
+  ================================================== */
+
   eyebrow: {
     fontSize: 10,
     letterSpacing: 1.4,
@@ -2113,6 +2788,10 @@ const styles = StyleSheet.create({
     marginTop: 7,
   },
 
+  /* =================================================
+     FIELDS
+  ================================================== */
+
   field: {
     marginTop: 17,
   },
@@ -2124,8 +2803,13 @@ const styles = StyleSheet.create({
     marginBottom: 7,
   },
 
+  required: {
+    color: COLORS.danger,
+    fontWeight: '900',
+  },
+
   inputWrap: {
-    height: 56,
+    minHeight: 56,
     borderWidth: 1.2,
     borderColor: COLORS.border,
     borderRadius: 15,
@@ -2183,7 +2867,8 @@ const styles = StyleSheet.create({
   },
 
   readOnly: {
-    backgroundColor: COLORS.mint,
+    backgroundColor:
+      COLORS.mint,
     borderColor:
       COLORS.primarySoft,
   },
@@ -2219,6 +2904,10 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 
+  /* =================================================
+     PASSWORD RULE
+  ================================================== */
+
   rule: {
     marginTop: 18,
     borderRadius: 15,
@@ -2239,6 +2928,10 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     marginTop: 5,
   },
+
+  /* =================================================
+     CHIPS
+  ================================================== */
 
   chips: {
     flexDirection: 'row',
@@ -2275,6 +2968,10 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDark,
   },
 
+  /* =================================================
+     SECTION TITLES
+  ================================================== */
+
   sectionTitle: {
     fontSize: 17,
     color: COLORS.text,
@@ -2288,6 +2985,10 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '900',
   },
+
+  /* =================================================
+     EMERGENCY CONTACTS
+  ================================================== */
 
   contactHeader: {
     flexDirection: 'row',
@@ -2342,6 +3043,10 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
+  /* =================================================
+     PHONE
+  ================================================== */
+
   countryButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2363,6 +3068,10 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     marginLeft: 4,
   },
+
+  /* =================================================
+     ADD CONTACT
+  ================================================== */
 
   addContactButton: {
     minHeight: 52,
@@ -2391,6 +3100,10 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDark,
     fontWeight: '900',
   },
+
+  /* =================================================
+     MAIN BUTTON
+  ================================================== */
 
   button: {
     height: 57,
@@ -2426,9 +3139,9 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
 
-  /* =====================
+  /* =================================================
      COUNTRY MODAL
-  ====================== */
+  ================================================== */
 
   modalBackdrop: {
     flex: 1,
@@ -2489,9 +3202,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  /* =====================
+  /* =================================================
      CALENDAR
-  ====================== */
+  ================================================== */
 
   calendarBackdrop: {
     flex: 1,
@@ -2551,7 +3264,6 @@ const styles = StyleSheet.create({
 
   calendarSelectorRow: {
     flexDirection: 'row',
-    gap: 10,
     marginTop: 22,
     marginBottom: 8,
   },
@@ -2560,16 +3272,21 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 48,
     borderRadius: 15,
-    backgroundColor: COLORS.mint,
+    backgroundColor:
+      COLORS.mint,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent:
+      'center',
     paddingHorizontal: 10,
+    marginHorizontal: 5,
   },
 
   calendarSelectorActive: {
-    backgroundColor: COLORS.primarySoft,
+    backgroundColor:
+      COLORS.primarySoft,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor:
+      COLORS.primary,
   },
 
   calendarSelectorText: {
@@ -2582,6 +3299,10 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDark,
   },
 
+  /* =================================================
+     YEAR PICKER
+  ================================================== */
+
   yearPicker: {
     maxHeight: 310,
     marginTop: 8,
@@ -2590,7 +3311,8 @@ const styles = StyleSheet.create({
   yearGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent:
+      'space-between',
   },
 
   yearCell: {
@@ -2598,13 +3320,16 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 14,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent:
+      'center',
     marginBottom: 8,
-    backgroundColor: COLORS.mint,
+    backgroundColor:
+      COLORS.mint,
   },
 
   yearCellActive: {
-    backgroundColor: COLORS.primary,
+    backgroundColor:
+      COLORS.primary,
   },
 
   yearText: {
@@ -2618,10 +3343,15 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
+  /* =================================================
+     MONTH PICKER
+  ================================================== */
+
   monthGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent:
+      'space-between',
     marginTop: 8,
   },
 
@@ -2629,14 +3359,17 @@ const styles = StyleSheet.create({
     width: '31%',
     height: 52,
     borderRadius: 14,
-    backgroundColor: COLORS.mint,
+    backgroundColor:
+      COLORS.mint,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent:
+      'center',
     marginBottom: 9,
   },
 
   monthCellActive: {
-    backgroundColor: COLORS.primary,
+    backgroundColor:
+      COLORS.primary,
   },
 
   monthCellDisabled: {
@@ -2653,6 +3386,10 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontWeight: '900',
   },
+
+  /* =================================================
+     CALENDAR DAY VIEW
+  ================================================== */
 
   calendarMonthRow: {
     flexDirection: 'row',

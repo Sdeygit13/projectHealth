@@ -1,25 +1,37 @@
-# Smaran — SIH26003 Frontend v4
+# Smaran final integration update
 
-This package contains the corrected React Native frontend for the Smaran SIH26003 prototype.
+This ZIP contains the updated `src/` plus the integrated `App.js`.
 
-## v4 fixes
-- Removed the top Login header/pill.
-- Removed the @ field icon and other unnecessary identifier icons.
-- Login label is now `Enter Email or Phone Number`.
-- Placeholder is now `Email or Phone Number`.
-- Removed the demo-account credentials from the visible UI.
-- Improved Android screen fitting and vertical spacing.
-- Prevented automatic password focus/autofill behavior on Android while retaining autocomplete semantics.
-- Added working Android hardware Back navigation using a real navigation history stack.
-- Existing screen-level Back buttons continue to work.
-- Login validation remains active.
-- Login loading/disabled state remains active.
-- Generic authentication errors remain active.
-- Basic failed-attempt throttling remains active.
-- No `100% Offline` UI text is included.
+## One required dependency for the new Memory Album gallery
 
-## Demo login for frontend testing
-Email: caregiver@smaran.app
-Password: Smaran123
+The new multi-photo gallery uses `react-native-image-picker`.
+From the project root run:
 
-Replace the temporary demo authentication with the team's real HTTPS authentication API before production use.
+```powershell
+npm install react-native-image-picker
+```
+
+Then rebuild Android:
+
+```powershell
+npx react-native run-android
+```
+
+For a normal Android app, the library handles the photo picker flow. If your Android project targets a setup that requires explicit media permissions, follow the library's current Android setup instructions.
+
+## Important Android reminder-alarm requirement
+
+Smaran's notification service uses Notifee trigger notifications and exact alarms. Ensure the Android app has the exact-alarm permission required by the Notifee version installed in your project, then rebuild the native app. `app.json` does not control this native Android permission.
+
+## What was integrated
+
+- Status-bar-safe global app content area.
+- Centralized Android hardware/app Back handling.
+- Persistent profile, reminders, trusted people and memory albums.
+- Reminder add/edit/delete/complete synchronization with notifications.
+- Real Circle contacts with country code + 10-digit mobile number and Android dialer calling.
+- Caregiver contact pinned to the top and visibly marked.
+- Multi-photo gallery selection and album-style memory UI.
+- English/Bengali/Hindi/Assamese language selection.
+- Patient/Caregiver mode switching protected by biometric authentication.
+- Biometric enable/disable uses the existing biometric service.
