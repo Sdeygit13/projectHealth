@@ -15,9 +15,6 @@ import {
 import Logo from '../components/Logo';
 import {COLORS, SHADOW} from '../theme';
 
-const DEMO_EMAIL = 'caregiver@smaran.app';
-const DEMO_PASSWORD = 'Smaran123';
-
 const EMAIL_RE =
   /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.com$/i;
 
@@ -165,50 +162,30 @@ export default function LoginScreen({onLogin, onSignup, onForgot}) {
     }
 
     Keyboard.dismiss();
-
     setLoading(true);
+    setServerError('');
 
-    await new Promise(resolve => setTimeout(resolve, 650));
-
-    const success =
-      identifier.trim().toLowerCase() === DEMO_EMAIL &&
-      password === DEMO_PASSWORD;
-
-    if (!success) {
+    try {
+      await onLogin({identifier: identifier.trim(), password});
+      setFailedAttempts(0);
+      setErrors({});
+      setServerError('');
+      setLoading(false);
+    } catch (error) {
       const attempts = failedAttempts + 1;
-
       setFailedAttempts(attempts);
       setLoading(false);
-
-      /*
-       * Generic authentication error.
-       * Does not reveal whether email or password was wrong.
-       */
-      setServerError('Invalid username or password.');
+      setServerError(error?.message || 'Invalid username or password.');
 
       if (attempts >= 5) {
         const until = Date.now() + 30000;
-
         setLockedUntil(until);
         setSecondsLeft(30);
-
         setServerError(
           'Too many unsuccessful attempts. Please try again in 30 seconds.',
         );
       }
-
-      return;
     }
-
-    /*
-     * Successful login.
-     */
-    setLoading(false);
-    setFailedAttempts(0);
-    setErrors({});
-    setServerError('');
-
-    onLogin('Asha');
   };
 
   /*

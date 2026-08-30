@@ -30,7 +30,17 @@ import {
   disableBiometric,
   isBiometricEnabled,
 } from './src/services/biometric';
-import {loadProfile, loadReminders, saveProfile, saveReminders} from './src/services/storage';
+import {
+  clearAuthSession,
+  fetchCurrentUser,
+  getDisplayName,
+  loadAuthSession,
+  loginUser,
+  registerUser,
+  forgotPasswordRequest,
+  saveAuthSession,
+} from './src/services/api';
+import {loadProfile, loadReminders, saveProfile, saveReminders, clearProfile} from './src/services/storage';
 import {syncReminderNotifications} from './src/services/notifications';
 
 const DEFAULT_REMINDERS = [
@@ -52,6 +62,7 @@ export default function App() {
   const [reminders, setReminders] = useState(DEFAULT_REMINDERS);
   const [booting, setBooting] = useState(true);
   const [biometricBusy, setBiometricBusy] = useState(false);
+  const [authSession, setAuthSession] = useState(null);
 
   const screenRef = useRef('login');
   const historyRef = useRef([]);
@@ -87,10 +98,11 @@ export default function App() {
 
     const boot = async () => {
       try {
-        const [profile, storedReminders, enabled] = await Promise.all([
+        const [profile, storedReminders, enabled, session] = await Promise.all([
           loadProfile(),
           loadReminders(),
           isBiometricEnabled(),
+          loadAuthSession(),
         ]);
 
         if (!mounted) return;
@@ -104,6 +116,24 @@ export default function App() {
 
         if (Array.isArray(storedReminders) && storedReminders.length) {
           setReminders(storedReminders);
+        }
+
+        if (session?.access_token) {
+          try {
+            const user = await fetchCurrentUser(session.access_token);
+            const displayName = getDisplayName(user);
+            setUserName(displayName || 'Caregiver');
+            setAuthSession(session);
+            historyRef.current = [];
+            setHistory([]);
+            setCurrentScreen('home');
+            setBooting(false);
+            return;
+          } catch (error) {
+            console.log('Session restore failed:', error);
+            await clearAuthSession();
+            setAuthSession(null);
+          }
         }
 
         if (!enabled) {
@@ -154,38 +184,82 @@ export default function App() {
     syncReminderNotifications(reminders, patientName);
   }, [patientName, reminders]);
 
-  const login = async name => {
+  const login = async ({identifier, password}) => {
+    const email = String(identifier || '').trim();
+    const response = await loginUser({identifier: email, password});
+    const session = {
+      access_token: response.access_token,
+      refresh_token: response.refresh_token,
+      email,
+    };
+
+    await saveAuthSession(session);
+    setAuthSession(session);
+
+    try {
+      const user = await fetchCurrentUser(session.access_token);
+      const displayName = getDisplayName(user);
+      setUserName(displayName || 'Caregiver');
+    } catch (error) {
+      console.log('Fetch current user after login failed:', error);
+    }
+
     const profile = await loadProfile();
-    setUserName(profile?.caregiverName || name || 'Caregiver');
+    setUserName(profile?.caregiverName || getDisplayName(await fetchCurrentUser(session.access_token)) || 'Caregiver');
     setPatientName(profile?.patientName || 'Patient');
     setPatientDob(profile?.patientDob || '');
     setPatientAge(profile?.age || '');
+
     const stored = await loadReminders();
     if (Array.isArray(stored) && stored.length) setReminders(stored);
+
     historyRef.current = ['login'];
     setHistory(['login']);
     setCurrentScreen('onboarding');
   };
 
   const completeSignup = async profile => {
-    const normalized = {
-      ...profile,
-      caregiverName: profile?.caregiverName || 'Caregiver',
-      patientName: profile?.patientName || 'Patient',
-      patientDob: profile?.patientDob || '',
-      age: profile?.age || '',
-    };
+    const email = String(profile?.identifier || '').trim();
+    const password = String(profile?.password || '');
 
-    setUserName(normalized.caregiverName);
-    setPatientName(normalized.patientName);
-    setPatientDob(normalized.patientDob);
-    setPatientAge(normalized.age);
-    await saveProfile(normalized);
-    await saveReminders(reminders);
+    if (!email || !email.includes('@')) {
+      throw new Error('Please provide a valid email address for registration.');
+    }
 
-    historyRef.current = ['login', 'signup'];
-    setHistory(['login', 'signup']);
-    setCurrentScreen('biometricSetup');
+    if (!password) {
+      throw new Error('Password is required.');
+    }
+
+    try {
+      await registerUser({
+        identifier: email,
+        password,
+        full_name: profile?.name || profile?.caregiverName || 'Caregiver',
+        phone: profile?.doctorPhone || email,
+      });
+
+      const normalized = {
+        ...profile,
+        caregiverName: profile?.caregiverName || profile?.name || 'Caregiver',
+        patientName: profile?.patientName || 'Patient',
+        patientDob: profile?.patientDob || '',
+        age: profile?.age || '',
+      };
+
+      setUserName(normalized.caregiverName);
+      setPatientName(normalized.patientName);
+      setPatientDob(normalized.patientDob);
+      setPatientAge(normalized.age);
+      await saveProfile(normalized);
+      await saveReminders(reminders);
+
+      historyRef.current = ['login', 'signup'];
+      setHistory(['login', 'signup']);
+      setCurrentScreen('biometricSetup');
+    } catch (error) {
+      Alert.alert('Registration failed', error?.message || 'Could not create the account.');
+      throw error;
+    }
   };
 
   const biometricEnabled = () => {
@@ -232,10 +306,19 @@ export default function App() {
     } catch (error) {
       console.log('Logout biometric cleanup error:', error);
     }
+
+    try {
+      await clearAuthSession();
+    } catch (error) {
+      console.log('Logout auth session cleanup error:', error);
+    }
+
+    setAuthSession(null);
     setBiometricBusy(false);
     historyRef.current = [];
     setHistory([]);
     setGuardianMode(false);
+    await clearProfile();
     setCurrentScreen('login');
   };
 

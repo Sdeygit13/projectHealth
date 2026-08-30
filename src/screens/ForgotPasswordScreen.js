@@ -1,5 +1,6 @@
 import React, {useRef, useState} from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,6 +12,7 @@ import {
 } from 'react-native';
 import Logo from '../components/Logo';
 import {COLORS, SHADOW} from '../theme';
+import {forgotPasswordRequest} from '../services/api';
 
 const EMAIL_RE = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.com$/i;
 const PHONE_RE = /^\d{10}$/;
@@ -31,9 +33,10 @@ export default function ForgotPasswordScreen({onBack}) {
   const [identifier, setIdentifier] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
 
-  const submit = () => {
+  const submit = async () => {
     const next = validate(identifier);
     setError(next);
     setMessage('');
@@ -41,9 +44,18 @@ export default function ForgotPasswordScreen({onBack}) {
       inputRef.current?.focus();
       return;
     }
-    setMessage(
-      'If the account exists, recovery instructions will be sent to the registered contact.',
-    );
+
+    setLoading(true);
+    try {
+      await forgotPasswordRequest({identifier});
+      setMessage(
+        'If the account exists, recovery instructions will be sent to the registered contact.',
+      );
+    } catch (apiError) {
+      setMessage(apiError?.message || 'Unable to start password recovery right now.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -111,10 +123,17 @@ export default function ForgotPasswordScreen({onBack}) {
 
           <Pressable
             onPress={submit}
-            style={({pressed}) => [styles.button, pressed && styles.pressed]}
+            disabled={loading}
+            style={({pressed}) => [styles.button, pressed && !loading && styles.pressed, loading && styles.disabled]}
           >
-            <Text style={styles.buttonText}>Continue</Text>
-            <Text style={styles.arrow}>→</Text>
+            {loading ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <>
+                <Text style={styles.buttonText}>Continue</Text>
+                <Text style={styles.arrow}>→</Text>
+              </>
+            )}
           </Pressable>
 
           <Text style={styles.security}>
