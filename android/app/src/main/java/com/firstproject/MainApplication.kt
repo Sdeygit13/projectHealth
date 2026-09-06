@@ -14,14 +14,15 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList =
         PackageList(this).packages.apply {
-          // Packages that cannot be autolinked yet can be added manually here, for example:
-          // add(MyReactNativePackage())
+          add(SmaranSpeechPackage())
+          add(SmaranAlarmPackage())
         },
     )
   }
 
   override fun onCreate() {
     super.onCreate()
+    SmaranAlarmManager.createChannel(this)
     loadReactNative(this)
   }
 }

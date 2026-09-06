@@ -20,7 +20,8 @@
     "react-native-biometrics": "^3.0.1",
     "react-native-image-picker": "^8.2.1",
     "react-native-safe-area-context": "^5.9.1",
-    "react-native-sound": "^0.13.0"
+    "react-native-sound": "^0.13.0",
+    "react-native-tts": "^4.1.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

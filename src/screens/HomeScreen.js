@@ -1,42 +1,27 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {Pressable, ScrollView, StatusBar, StyleSheet, Text, View} from 'react-native';
+import {
+  Keyboard,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+
 import BottomNav from '../components/BottomNav';
-import Logo from '../components/Logo';
 import Icon from '../components/Icon';
 import {COLORS, SHADOW} from '../theme';
 
-function greetingFor(hour) {
-  if (hour >= 5 && hour < 12) return 'Good morning!';
-  if (hour >= 12 && hour < 17) return 'Good afternoon!';
-  if (hour >= 17 && hour < 21) return 'Good evening!';
-  return 'Good evening!';
-}
-
-function firstName(value) {
-  const name = String(value || 'Patient').trim();
-  return name ? name.split(/\s+/)[0] : 'Patient';
-}
-
-function formatDateTime(date) {
-  const datePart = date.toLocaleDateString('en-IN', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-  const timePart = date.toLocaleTimeString('en-IN', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-  return `${datePart} • ${timePart}`;
-}
+const HOME_BACKGROUND = '#FEF7E8';
 
 const FEATURE_DATA = [
   {
     key: 'daily',
     icon: 'clipboard-check',
     title: 'Your Daily Task',
-    subtitle: 'Cognitive memory activities',
+    subtitle: 'Cognitive Memory Game (0/5)',
     background: COLORS.primarySoft,
     route: 'games',
   },
@@ -44,15 +29,15 @@ const FEATURE_DATA = [
     key: 'garden',
     icon: 'cloud',
     title: 'Memory Garden',
-    subtitle: 'Memory Assistant Test',
-    background: '#F5DDDD',
-    route: 'games',
+    subtitle: 'Memory Assistant',
+    background: '#F6DCDD',
+    route: 'talk',
   },
   {
     key: 'lane',
     icon: 'route',
     title: 'Take a Trip Down Your Memory Lane',
-    subtitle: 'Familiar moments & memories',
+    subtitle: 'Your Past Memories',
     background: '#DCECF2',
     route: 'photos',
   },
@@ -60,11 +45,54 @@ const FEATURE_DATA = [
     key: 'scheduled',
     icon: 'calendar-days',
     title: 'Scheduled',
-    subtitle: 'Your daily routine',
+    subtitle: 'Your Daily Routine',
     background: '#F5E6C7',
     route: 'reminders',
   },
 ];
+
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function greetingFor(hour) {
+  if (hour >= 5 && hour < 12) {
+    return 'Good Morning';
+  }
+
+  if (hour >= 12 && hour < 17) {
+    return 'Good Afternoon';
+  }
+
+  return 'Good Evening';
+}
+
+function isDaytime(hour) {
+  return hour >= 6 && hour < 18;
+}
+
+function firstName(value) {
+  const name = String(value || 'Patient').trim();
+
+  if (!name) {
+    return 'Patient';
+  }
+
+  return name.split(/\s+/)[0];
+}
+
+function formatDate(date) {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Home Screen                                                                */
+/* -------------------------------------------------------------------------- */
 
 export default function HomeScreen({
   patientName,
@@ -72,356 +100,1063 @@ export default function HomeScreen({
   onNavigate,
   reminders = [],
   onToggleReminder,
+  onSendMessage,
+  onCapturePhoto,
 }) {
   const [now, setNow] = useState(new Date());
+  const [message, setMessage] = useState('');
+  const [isListening, setIsListening] = useState(false);
 
+  /* Keep the greeting/date fresh without requiring a screen reload. */
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 30000);
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 30000);
+
     return () => clearInterval(timer);
   }, []);
 
   const patientFirstName = firstName(patientName || name);
-  const safeReminders = useMemo(
-    () => (Array.isArray(reminders) ? reminders.filter(Boolean) : []),
-    [reminders],
-  );
-  const pendingCount = useMemo(
-    () => safeReminders.filter(item => !item.done).length,
-    [safeReminders],
-  );
-  const completedCount = safeReminders.length - pendingCount;
+
+  const safeReminders = useMemo(() => {
+    if (!Array.isArray(reminders)) {
+      return [];
+    }
+
+    return reminders.filter(Boolean);
+  }, [reminders]);
+
+  const todayPlan = safeReminders.slice(0, 2);
+
+  const completedTasks = safeReminders.filter(
+    item => Boolean(item?.done),
+  ).length;
+
+  const pendingReminderCount = safeReminders.filter(
+    item => !item?.done,
+  ).length;
+
+  const greeting = greetingFor(now.getHours());
+  const daytime = isDaytime(now.getHours());
+
+  /* ---------------------------------------------------------------------- */
+  /* Actions                                                                */
+  /* ---------------------------------------------------------------------- */
+
+  const submitMessage = () => {
+    const text = message.trim();
+
+    if (!text) {
+      return;
+    }
+
+    Keyboard.dismiss();
+    setMessage('');
+    setIsListening(false);
+
+    onSendMessage?.(text);
+  };
+
+  const handleMicrophone = () => {
+    Keyboard.dismiss();
+
+    /*
+     * No speech-recognition package is introduced here.
+     *
+     * If the Talk/AI screen already handles voice interaction, we simply
+     * navigate there. This keeps HomeScreen compatible with the existing
+     * project and avoids introducing another native dependency.
+     */
+    setIsListening(true);
+
+    onNavigate?.('talk');
+  };
+
+  const handleCamera = () => {
+    Keyboard.dismiss();
+    setIsListening(false);
+    onCapturePhoto?.();
+  };
+
+  const handleFeaturePress = item => {
+    if (item.key === 'garden') {
+      onNavigate?.(item.route);
+      return;
+    }
+
+    onNavigate?.(item.route);
+  };
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} translucent={false} />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={HOME_BACKGROUND}
+        translucent={false}
+      />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
-        {/* =========================================================
-            TOP HEADER — logo + redesigned notification bell
-            Guardian Mode intentionally removed from Home.
-           ========================================================= */}
+        
+        {/* ================================================================ */}
+        {/* GREETING                                                         */}
+        {/* ================================================================ */}
+
         <View style={styles.header}>
-          <View style={styles.logoArea}>
-            <Logo size={47} />
+          <View style={styles.headerCopy}>
+            <Text style={styles.hello}>Hello,</Text>
+
+            <Text
+              style={styles.patientName}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.72}>
+              {patientFirstName}
+            </Text>
+
+            <View style={styles.greetingRow}>
+              <Text style={styles.greeting}>{greeting}</Text>
+
+              <Text style={styles.greetingIcon}>
+                {daytime ? '☀️' : '🌙'}
+              </Text>
+            </View>
+
+            <Text style={styles.date}>{formatDate(now)}</Text>
           </View>
 
+          {/* Reminder notification button */}
           <Pressable
             onPress={() => onNavigate?.('reminders')}
-            style={({pressed}) => [styles.notificationButton, pressed && styles.pressed]}
+            style={({pressed}) => [
+              styles.reminderButton,
+              pressed && styles.pressed,
+            ]}
             accessibilityRole="button"
-            accessibilityLabel="Open reminders">
-            <View style={styles.bellIconWrap}>
-              <Icon name="bell" size={29} color={COLORS.primaryDark} strokeWidth={2.15} />
-              {pendingCount > 0 ? (
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.notificationBadgeText}>{Math.min(pendingCount, 9)}</Text>
-                </View>
-              ) : null}
-            </View>
+            accessibilityLabel={`Open reminders. ${pendingReminderCount} pending reminders.`}>
+            
+            <Text style={styles.reminderEmoji}>
+              {daytime ? '☀️' : '🌙'}
+            </Text>
+
+            {pendingReminderCount > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {Math.min(pendingReminderCount, 9)}
+                </Text>
+              </View>
+            ) : null}
           </Pressable>
         </View>
 
-        {/* =========================================================
-            GREETING + REAL-TIME DATE/TIME
-           ========================================================= */}
-        <View style={styles.greetingSection}>
-          <View style={styles.greetingTextArea}>
-            <Text style={styles.greeting}>{greetingFor(now.getHours())}</Text>
-            <Text style={styles.patientName}>{patientFirstName}</Text>
-            <Text style={styles.dateTime}>{formatDateTime(now)}</Text>
-          </View>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{patientFirstName.charAt(0).toUpperCase()}</Text>
-          </View>
-        </View>
+        {/* ================================================================ */}
+        {/* FEATURE GRID                                                      */}
+        {/* ================================================================ */}
 
-        {/* =========================================================
-            SENIOR-DEVELOPER FEATURE GRID — keep these four cards.
-           ========================================================= */}
         <View style={styles.featureGrid}>
           {FEATURE_DATA.map(item => (
             <FeatureTile
               key={item.key}
-              icon={item.icon}
-              title={item.title}
-              subtitle={item.subtitle}
-              background={item.background}
-              onPress={() => onNavigate?.(item.route)}
+              {...item}
+              onPress={() => handleFeaturePress(item)}
             />
           ))}
         </View>
 
-        {/* =========================================================
-            GREAT JOB — restored and tappable.
-           ========================================================= */}
+        {/* ================================================================ */}
+        {/* DAILY PROGRESS                                                    */}
+        {/* ================================================================ */}
+
         <Pressable
-          onPress={() => onNavigate?.('reminders')}
-          style={({pressed}) => [styles.progressBanner, pressed && styles.pressed]}
+          onPress={() => onNavigate?.('games')}
+          style={({pressed}) => [
+            styles.progressBanner,
+            pressed && styles.pressed,
+          ]}
           accessibilityRole="button"
-          accessibilityLabel="Open today's reminders and task progress">
+          accessibilityLabel="Open today's memory game progress">
+          
           <View style={styles.progressIcon}>
-            <Icon name="heart" size={28} color={COLORS.primaryDark} strokeWidth={2.1} />
+            <Icon
+              name="heart"
+              size={27}
+              color={COLORS.primaryDark}
+              strokeWidth={2.05}
+            />
           </View>
-          <View style={styles.progressTextArea}>
+
+          <View style={styles.progressCopy}>
             <Text style={styles.progressTitle}>
-              {pendingCount === 0 && safeReminders.length > 0
-                ? 'Great job! You completed all tasks today.'
-                : `Great job! You completed ${completedCount} of ${safeReminders.length || 0} tasks today.`}
+              Great job! You completed {Math.min(completedTasks, 5)} of 5
+              games today.
             </Text>
-            <Text style={styles.progressSub}>Tap to view and manage your full daily plan.</Text>
+
+            <Text style={styles.progressSub}>
+              Keep your mind active with a little practice.
+            </Text>
           </View>
-          <Text style={styles.bannerArrow}>›</Text>
+
+          <Text style={styles.arrow}>›</Text>
         </Pressable>
 
-        {/* =========================================================
-            TODAY'S PLAN — restored and interactive.
-           ========================================================= */}
+        {/* ================================================================ */}
+        {/* TODAY'S PLAN                                                      */}
+        {/* ================================================================ */}
+
         <View style={styles.planHeader}>
-          <Text style={styles.planTitle}>Today&apos;s Plan</Text>
+          <Text style={styles.planTitle}>Today's Plan</Text>
+
           <Pressable
             onPress={() => onNavigate?.('reminders')}
-            style={styles.scheduleLink}
+            style={({pressed}) => [
+              styles.scheduleLink,
+              pressed && styles.linkPressed,
+            ]}
             accessibilityRole="button"
-            accessibilityLabel="View full schedule">
-            <Icon name="calendar-days" size={17} color={COLORS.primaryDark} strokeWidth={2.1} />
-            <Text style={styles.scheduleLinkText}>View Full Schedule</Text>
+            accessibilityLabel="Open full schedule">
+            
+            <Icon
+              name="calendar-days"
+              size={18}
+              color={COLORS.primaryDark}
+              strokeWidth={2.05}
+            />
+
+            <Text style={styles.scheduleText}>Full Schedule</Text>
           </Pressable>
         </View>
 
-        {safeReminders.length === 0 ? (
+        {todayPlan.length > 0 ? (
+          todayPlan.map((item, index) => (
+            <PlanCard
+              key={item.id ?? `plan-${index}`}
+              item={item}
+              onToggle={() => onToggleReminder?.(item.id)}
+            />
+          ))
+        ) : (
           <Pressable
             onPress={() => onNavigate?.('reminders')}
-            style={({pressed}) => [styles.emptyPlan, pressed && styles.pressed]}>
-            <Icon name="calendar-days" size={26} color={COLORS.primaryDark} />
-            <View style={{flex: 1, marginLeft: 12}}>
-              <Text style={styles.emptyPlanTitle}>No reminders yet</Text>
-              <Text style={styles.emptyPlanText}>Add a reminder to build today&apos;s plan.</Text>
+            style={({pressed}) => [
+              styles.emptyPlan,
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="No reminders scheduled. Add a reminder.">
+            
+            <View style={styles.emptyIcon}>
+              <Icon
+                name="calendar-days"
+                size={25}
+                color={COLORS.primaryDark}
+                strokeWidth={2}
+              />
             </View>
-            <Text style={styles.bannerArrow}>›</Text>
+
+            <View style={styles.emptyCopy}>
+              <Text style={styles.emptyTitle}>
+                Nothing scheduled yet
+              </Text>
+
+              <Text style={styles.emptyText}>
+                Add a reminder to build today's plan.
+              </Text>
+            </View>
+
+            <Text style={styles.arrow}>›</Text>
           </Pressable>
-        ) : (
-          safeReminders.map(item => (
-            <View key={item.id} style={[styles.planCard, item.done && styles.planCardDone]}>
-              <View style={[styles.planIcon, item.done && styles.planIconDone]}>
-                <Icon name="clock" size={23} color={COLORS.primaryDark} strokeWidth={2.1} />
-              </View>
-              <Pressable
-                onPress={() => onToggleReminder?.(item.id)}
-                style={styles.planMain}
-                accessibilityRole="button"
-                accessibilityLabel={`${item.done ? 'Completed' : 'Pending'} ${item.title} at ${item.time}`}>
-                <Text style={styles.planTime}>{item.time}</Text>
-                <Text style={[styles.planItemTitle, item.done && styles.planItemTitleDone]}>{item.title}</Text>
-                <Text style={styles.planDetail}>{item.detail || 'Smaran reminder'}</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => onToggleReminder?.(item.id)}
-                style={[styles.doneButton, item.done && styles.doneButtonActive]}
-                accessibilityRole="button"
-                accessibilityLabel={item.done ? `Mark ${item.title} as pending` : `Mark ${item.title} as done`}>
-                <Text style={[styles.doneButtonText, item.done && styles.doneButtonTextActive]}>
-                  {item.done ? '✓ Done' : 'Mark Done'}
-                </Text>
-              </Pressable>
-            </View>
-          ))
         )}
+
+        {/* ================================================================ */}
+        {/* AI REMINDER / ASSISTANT                                           */}
+        {/* ================================================================ */}
+
+        <View style={styles.aiReminderSection}>
+          <View style={styles.aiReminderHeader}>
+            <View style={styles.aiReminderTitleRow}>
+              <View style={styles.aiTitleIcon}>
+                <Icon
+                  name="bell"
+                  size={20}
+                  color={COLORS.primaryDark}
+                  strokeWidth={2}
+                />
+              </View>
+
+              <View style={styles.aiReminderTitleCopy}>
+                <Text style={styles.aiReminderTitle}>
+                  AI Reminder
+                </Text>
+
+                <Text style={styles.aiReminderSubtitle}>
+                  Ask Smaran about your schedule
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.composer,
+              isListening && styles.composerListening,
+            ]}>
+            
+            <View style={styles.composerLeading}>
+              <Icon
+                name="message-circle"
+                size={23}
+                color={COLORS.primaryDark}
+                strokeWidth={1.9}
+              />
+            </View>
+
+            <TextInput
+              value={message}
+              onChangeText={text => {
+                setMessage(text);
+                if (isListening) {
+                  setIsListening(false);
+                }
+              }}
+              placeholder="Ask me about your reminders..."
+              placeholderTextColor={COLORS.muted}
+              style={styles.composerInput}
+              returnKeyType="send"
+              onSubmitEditing={submitMessage}
+              blurOnSubmit={false}
+              accessibilityLabel="Ask Smaran about your reminders"
+            />
+
+            {message.trim() ? (
+              <Pressable
+                onPress={submitMessage}
+                style={({pressed}) => [
+                  styles.composerAction,
+                  styles.sendAction,
+                  pressed && styles.actionPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Send message">
+                
+                <Icon
+                  name="send"
+                  size={19}
+                  color={COLORS.primaryDark}
+                  strokeWidth={2.1}
+                />
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={handleMicrophone}
+                style={({pressed}) => [
+                  styles.composerAction,
+                  styles.micAction,
+                  isListening && styles.micActionActive,
+                  pressed && styles.actionPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Talk to Smaran AI Reminder">
+                
+                <Icon
+                  name="mic"
+                  size={22}
+                  color={COLORS.primaryDark}
+                  strokeWidth={2.1}
+                />
+              </Pressable>
+            )}
+
+            <Pressable
+              onPress={handleCamera}
+              style={({pressed}) => [
+                styles.composerAction,
+                styles.cameraAction,
+                pressed && styles.actionPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Take a photo">
+              
+              <Icon
+                name="camera"
+                size={21}
+                color={COLORS.primaryDark}
+                strokeWidth={2}
+              />
+            </Pressable>
+          </View>
+
+          <Text style={styles.aiHint}>
+            Tap the microphone to talk to Smaran
+          </Text>
+        </View>
+
       </ScrollView>
 
-      <View style={styles.bottomNavigationWrapper}>
-        <BottomNav active="home" onNavigate={onNavigate} />
-      </View>
+      {/* ================================================================ */}
+      {/* BOTTOM NAVIGATION                                                 */}
+      {/* ================================================================ */}
+
+      <BottomNav
+        active="home"
+        onNavigate={onNavigate}
+      />
     </View>
   );
 }
 
-function FeatureTile({icon, title, subtitle, background, onPress}) {
+/* -------------------------------------------------------------------------- */
+/* Feature Tile                                                               */
+/* -------------------------------------------------------------------------- */
+
+function FeatureTile({
+  icon,
+  title,
+  subtitle,
+  background,
+  onPress,
+}) {
   return (
     <Pressable
       onPress={onPress}
-      style={({pressed}) => [styles.featureTile, pressed && styles.pressed]}>
-      <View style={[styles.featureIconCircle, {backgroundColor: background}]}>
-        <Icon name={icon} size={24} color={COLORS.primaryDark} strokeWidth={2.15} />
+      style={({pressed}) => [
+        styles.featureTile,
+        pressed && styles.pressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}. ${subtitle}`}>
+      
+      <View
+        style={[
+          styles.featureIcon,
+          {
+            backgroundColor: background,
+          },
+        ]}>
+        <Icon
+          name={icon}
+          size={24}
+          color={COLORS.primaryDark}
+          strokeWidth={2.05}
+        />
       </View>
-      <View style={styles.featureTileContent}>
-        <Text style={styles.featureTitle}>{title}</Text>
-        <Text style={styles.featureSubtitle}>{subtitle}</Text>
-      </View>
+
+      <Text
+        style={styles.featureTitle}
+        numberOfLines={2}>
+        {title}
+      </Text>
+
+      <Text
+        style={styles.featureSubtitle}
+        numberOfLines={2}>
+        {subtitle}
+      </Text>
+
       <Text style={styles.featureArrow}>›</Text>
     </Pressable>
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Plan Card                                                                  */
+/* -------------------------------------------------------------------------- */
+
+function PlanCard({item, onToggle}) {
+  const isDone = Boolean(item?.done);
+
+  return (
+    <View style={styles.planCard}>
+      <View
+        style={[
+          styles.planIcon,
+          isDone && styles.planIconDone,
+        ]}>
+        <Icon
+          name="clock"
+          size={25}
+          color={COLORS.primaryDark}
+          strokeWidth={2.05}
+        />
+      </View>
+
+      <Pressable
+        onPress={onToggle}
+        style={styles.planMain}
+        accessibilityRole="button"
+        accessibilityLabel={`${isDone ? 'Completed' : 'Pending'} ${
+          item?.title || 'reminder'
+        }`}>
+        
+        <Text style={styles.planTime}>
+          {item?.time || 'Scheduled'}
+        </Text>
+
+        <Text
+          style={[
+            styles.planItemTitle,
+            isDone && styles.doneTitle,
+          ]}
+          numberOfLines={1}>
+          {item?.title || 'Reminder'}
+        </Text>
+
+        <Text
+          style={styles.planDetail}
+          numberOfLines={1}>
+          {item?.detail || 'Smaran reminder'}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        onPress={onToggle}
+        style={[
+          styles.planButton,
+          isDone
+            ? styles.doneButton
+            : styles.remindButton,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={
+          isDone
+            ? `Mark ${item?.title || 'reminder'} as pending`
+            : `Remind me about ${item?.title || 'reminder'}`
+        }>
+        
+        <Icon
+          name={isDone ? 'check' : 'bell'}
+          size={18}
+          color={COLORS.white}
+          strokeWidth={2.5}
+        />
+
+        <Text style={styles.planButtonText}>
+          {isDone ? "I'm Done" : 'Remind Me'}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Styles                                                                     */
+/* -------------------------------------------------------------------------- */
+
 const styles = StyleSheet.create({
-  screen: {flex: 1, backgroundColor: COLORS.background},
-  scroll: {flex: 1},
-  content: {paddingHorizontal: 14, paddingTop: 8, paddingBottom: 24},
+  screen: {
+    flex: 1,
+    backgroundColor: HOME_BACKGROUND,
+  },
+
+  scroll: {
+    flex: 1,
+  },
+
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 22,
+  },
+
+  /* ====================================================================== */
+  /* HEADER                                                                 */
+  /* ====================================================================== */
 
   header: {
-    minHeight: 64,
+    minHeight: 157,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
-  logoArea: {flex: 1, justifyContent: 'center'},
-  notificationButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 19,
+
+  headerCopy: {
+    flex: 1,
+    paddingRight: 10,
+  },
+
+  hello: {
+    fontSize: 31,
+    lineHeight: 36,
+    color: COLORS.text,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+
+  patientName: {
+    marginTop: 0,
+    fontSize: 40,
+    lineHeight: 45,
+    color: COLORS.primaryDark,
+    fontWeight: '900',
+    letterSpacing: -0.8,
+  },
+
+  greetingRow: {
+    marginTop: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  greeting: {
+    fontSize: 18,
+    lineHeight: 23,
+    color: COLORS.text,
+    fontWeight: '800',
+  },
+
+  greetingIcon: {
+    marginLeft: 7,
+    fontSize: 19,
+    lineHeight: 23,
+  },
+
+  date: {
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 17,
+    color: COLORS.muted,
+    fontWeight: '600',
+  },
+
+  reminderButton: {
+    width: 57,
+    height: 57,
+    marginTop: 2,
+    borderRadius: 20,
     backgroundColor: COLORS.white,
     alignItems: 'center',
     justifyContent: 'center',
     ...SHADOW,
   },
-  bellIconWrap: {width: 38, height: 38, alignItems: 'center', justifyContent: 'center'},
-  notificationBadge: {
+
+  reminderEmoji: {
+    fontSize: 27,
+    lineHeight: 32,
+  },
+
+  badge: {
     position: 'absolute',
-    right: -1,
-    top: -1,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
+    right: 5,
+    top: 4,
+    minWidth: 19,
+    height: 19,
+    borderRadius: 10,
+    paddingHorizontal: 4,
     backgroundColor: COLORS.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
     borderWidth: 1.5,
     borderColor: COLORS.white,
-  },
-  notificationBadgeText: {color: COLORS.white, fontSize: 9, fontWeight: '900'},
-
-  greetingSection: {
-    marginTop: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  greetingTextArea: {flex: 1, paddingRight: 10},
-  greeting: {fontSize: 17, color: COLORS.muted, fontWeight: '800'},
-  patientName: {marginTop: 2, fontSize: 34, lineHeight: 39, color: COLORS.text, fontWeight: '900'},
-  dateTime: {marginTop: 5, fontSize: 10.5, color: COLORS.primaryDark, fontWeight: '800'},
-  avatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: COLORS.primarySoft,
-    borderWidth: 2,
-    borderColor: COLORS.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {fontSize: 24, color: COLORS.primaryDark, fontWeight: '900'},
+
+  badgeText: {
+    fontSize: 9,
+    color: COLORS.white,
+    fontWeight: '900',
+  },
+
+  /* ====================================================================== */
+  /* FEATURE GRID                                                           */
+  /* ====================================================================== */
 
   featureGrid: {
-    marginTop: 19,
+    marginTop: 4,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 11,
+    rowGap: 12,
   },
+
   featureTile: {
     width: '48.2%',
-    minHeight: 145,
-    borderRadius: 19,
+    minHeight: 142,
+    borderRadius: 21,
     backgroundColor: COLORS.white,
     padding: 14,
     ...SHADOW,
   },
-  featureIconCircle: {width: 43, height: 43, borderRadius: 15, alignItems: 'center', justifyContent: 'center'},
-  featureTileContent: {flex: 1, marginTop: 12, paddingRight: 5},
-  featureTitle: {fontSize: 14, lineHeight: 18, color: COLORS.text, fontWeight: '900'},
-  featureSubtitle: {marginTop: 4, fontSize: 10.5, lineHeight: 14, color: COLORS.muted},
-  featureArrow: {position: 'absolute', right: 14, bottom: 10, fontSize: 21, color: COLORS.primaryDark, fontWeight: '700'},
+
+  featureIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  featureTitle: {
+    marginTop: 11,
+    paddingRight: 16,
+    fontSize: 16,
+    lineHeight: 20,
+    color: COLORS.text,
+    fontWeight: '900',
+  },
+
+  featureSubtitle: {
+    marginTop: 4,
+    paddingRight: 5,
+    fontSize: 10.5,
+    lineHeight: 14,
+    color: COLORS.muted,
+    fontWeight: '600',
+  },
+
+  featureArrow: {
+    position: 'absolute',
+    right: 13,
+    bottom: 9,
+    fontSize: 27,
+    lineHeight: 29,
+    color: COLORS.text,
+    fontWeight: '400',
+  },
+
+  /* ====================================================================== */
+  /* PROGRESS                                                               */
+  /* ====================================================================== */
 
   progressBanner: {
-    marginTop: 18,
-    minHeight: 96,
+    marginTop: 17,
+    minHeight: 78,
     borderRadius: 21,
     backgroundColor: '#E2F1D6',
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     ...SHADOW,
   },
+
   progressIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 51,
+    height: 51,
+    borderRadius: 26,
     backgroundColor: '#D8EAC9',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  progressTextArea: {flex: 1, marginLeft: 12, paddingRight: 8},
-  progressTitle: {fontSize: 14, lineHeight: 19, color: COLORS.primaryDark, fontWeight: '900'},
-  progressSub: {marginTop: 3, fontSize: 9.5, lineHeight: 14, color: COLORS.muted, fontWeight: '700'},
-  bannerArrow: {fontSize: 29, color: COLORS.primaryDark, fontWeight: '500'},
+
+  progressCopy: {
+    flex: 1,
+    marginLeft: 10,
+    paddingRight: 5,
+  },
+
+  progressTitle: {
+    fontSize: 14,
+    lineHeight: 18,
+    color: COLORS.primaryDark,
+    fontWeight: '900',
+  },
+
+  progressSub: {
+    marginTop: 2,
+    fontSize: 10,
+    lineHeight: 14,
+    color: COLORS.muted,
+    fontWeight: '700',
+  },
+
+  arrow: {
+    fontSize: 30,
+    lineHeight: 32,
+    color: COLORS.primaryDark,
+    fontWeight: '400',
+  },
+
+  /* ====================================================================== */
+  /* TODAY'S PLAN                                                           */
+  /* ====================================================================== */
 
   planHeader: {
-    marginTop: 24,
-    marginBottom: 11,
+    marginTop: 20,
+    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  planTitle: {fontSize: 27, color: COLORS.text, fontWeight: '900'},
-  scheduleLink: {flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingLeft: 8},
-  scheduleLinkText: {marginLeft: 5, fontSize: 11, color: COLORS.primaryDark, fontWeight: '900'},
+
+  planTitle: {
+    fontSize: 26,
+    lineHeight: 31,
+    color: COLORS.text,
+    fontWeight: '900',
+  },
+
+  scheduleLink: {
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+  },
+
+  scheduleText: {
+    marginLeft: 5,
+    fontSize: 11,
+    color: COLORS.primaryDark,
+    fontWeight: '900',
+  },
+
+  linkPressed: {
+    opacity: 0.65,
+  },
 
   planCard: {
-    minHeight: 118,
-    borderRadius: 21,
+    minHeight: 94,
+    borderRadius: 20,
     backgroundColor: COLORS.white,
-    padding: 13,
+    padding: 10,
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     ...SHADOW,
   },
-  planCardDone: {opacity: 0.9},
+
   planIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: COLORS.primarySoft,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#E3F0D7',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  planIconDone: {backgroundColor: '#DDEAD4'},
-  planMain: {flex: 1, marginLeft: 12, paddingRight: 8},
-  planTime: {fontSize: 11, color: COLORS.muted, fontWeight: '800'},
-  planItemTitle: {marginTop: 3, fontSize: 20, color: COLORS.text, fontWeight: '900'},
-  planItemTitleDone: {textDecorationLine: 'line-through'},
-  planDetail: {marginTop: 2, fontSize: 10.5, lineHeight: 15, color: COLORS.muted},
-  doneButton: {
-    minWidth: 82,
-    minHeight: 47,
+
+  planIconDone: {
+    backgroundColor: '#E0F0D7',
+  },
+
+  planMain: {
+    flex: 1,
+    marginLeft: 10,
+    paddingRight: 5,
+    justifyContent: 'center',
+  },
+
+  planTime: {
+    fontSize: 11,
+    color: COLORS.muted,
+    fontWeight: '700',
+  },
+
+  planItemTitle: {
+    marginTop: 1,
+    fontSize: 18,
+    lineHeight: 22,
+    color: COLORS.text,
+    fontWeight: '900',
+  },
+
+  doneTitle: {
+    textDecorationLine: 'line-through',
+    opacity: 0.65,
+  },
+
+  planDetail: {
+    marginTop: 1,
+    fontSize: 9.5,
+    lineHeight: 13,
+    color: COLORS.muted,
+  },
+
+  planButton: {
+    minWidth: 105,
+    minHeight: 44,
     borderRadius: 15,
-    backgroundColor: COLORS.primarySoft,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
   },
-  doneButtonActive: {backgroundColor: '#A9BEA0'},
-  doneButtonText: {fontSize: 10.5, color: COLORS.primaryDark, fontWeight: '900', textAlign: 'center'},
-  doneButtonTextActive: {color: COLORS.white},
+
+  doneButton: {
+    backgroundColor: '#4F9A42',
+  },
+
+  remindButton: {
+    backgroundColor: '#E49A1E',
+  },
+
+  planButtonText: {
+    marginLeft: 6,
+    color: COLORS.white,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+
+  /* ====================================================================== */
+  /* EMPTY PLAN                                                             */
+  /* ====================================================================== */
 
   emptyPlan: {
-    minHeight: 92,
+    minHeight: 84,
     borderRadius: 20,
     backgroundColor: COLORS.white,
-    padding: 16,
+    padding: 13,
     flexDirection: 'row',
     alignItems: 'center',
     ...SHADOW,
   },
-  emptyPlanTitle: {fontSize: 14, color: COLORS.text, fontWeight: '900'},
-  emptyPlanText: {fontSize: 10.5, color: COLORS.muted, marginTop: 3},
 
-  pressed: {opacity: 0.78, transform: [{scale: 0.99}]},
-  bottomNavigationWrapper: {backgroundColor: COLORS.background},
+  emptyIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  emptyCopy: {
+    flex: 1,
+    marginLeft: 10,
+  },
+
+  emptyTitle: {
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: '900',
+  },
+
+  emptyText: {
+    marginTop: 3,
+    fontSize: 10,
+    lineHeight: 14,
+    color: COLORS.muted,
+  },
+
+  /* ====================================================================== */
+  /* AI REMINDER                                                            */
+  /* ====================================================================== */
+
+  aiReminderSection: {
+    marginTop: 14,
+  },
+
+  aiReminderHeader: {
+    marginBottom: 7,
+  },
+
+  aiReminderTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  aiTitleIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  aiReminderTitleCopy: {
+    marginLeft: 9,
+    flex: 1,
+  },
+
+  aiReminderTitle: {
+    fontSize: 17,
+    lineHeight: 21,
+    color: COLORS.text,
+    fontWeight: '900',
+  },
+
+  aiReminderSubtitle: {
+    marginTop: 1,
+    fontSize: 10,
+    lineHeight: 14,
+    color: COLORS.muted,
+    fontWeight: '600',
+  },
+
+  composer: {
+    minHeight: 61,
+    borderRadius: 31,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: '#E8E1D5',
+    paddingLeft: 13,
+    paddingRight: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...SHADOW,
+  },
+
+  composerListening: {
+    borderWidth: 2,
+    borderColor: COLORS.primaryDark,
+  },
+
+  composerLeading: {
+    width: 28,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  composerInput: {
+    flex: 1,
+    height: 50,
+    marginLeft: 6,
+    paddingVertical: 0,
+    fontSize: 15,
+    color: COLORS.text,
+  },
+
+  composerAction: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginLeft: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+
+  micAction: {
+    backgroundColor: '#E5F2DA',
+    borderColor: '#D4E5C8',
+  },
+
+  micActionActive: {
+    backgroundColor: '#D4EAC6',
+    transform: [{scale: 1.04}],
+  },
+
+  sendAction: {
+    backgroundColor: '#E5F2DA',
+    borderColor: '#D4E5C8',
+  },
+
+  cameraAction: {
+    backgroundColor: '#F7F8F1',
+    borderColor: '#E0E6D8',
+  },
+
+  aiHint: {
+    marginTop: 5,
+    marginLeft: 7,
+    fontSize: 9.5,
+    lineHeight: 13,
+    color: COLORS.muted,
+    fontWeight: '600',
+  },
+
+  /* ====================================================================== */
+  /* INTERACTION                                                            */
+  /* ====================================================================== */
+
+  actionPressed: {
+    opacity: 0.65,
+    transform: [{scale: 0.94}],
+  },
+
+  pressed: {
+    opacity: 0.78,
+    transform: [{scale: 0.99}],
+  },
 });

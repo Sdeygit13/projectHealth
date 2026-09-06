@@ -1,11 +1,19 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Header from '../components/Header';
 import {COLORS, SHADOW} from '../theme';
 
 const quick=['What should I do now?','When is my medicine?','Who is in my circle?','Play a memory game'];
-export default function TalkingHelpScreen({onBack}){
- const [messages,setMessages]=useState([{from:'ai',text:'Hello Asha. I’m here with you. How can I help today?'}]);
+export default function TalkingHelpScreen({onBack, initialMessage = ''}){
+ const [messages,setMessages]=useState([{from:'ai',text:'Hello. I’m here with you. How can I help today?'}]);
+ useEffect(() => {
+   const text = String(initialMessage || '').trim();
+   if (!text) {
+     setMessages([{from:'ai',text:'Hello. I’m here with you. How can I help today?'}]);
+     return;
+   }
+   setMessages([{from:'ai',text:'Of course. I’m listening. How can I help?'},{from:'user',text},{from:'ai',text:'I heard you. Take your time and choose one of the options below if you need help.'}]);
+ }, [initialMessage]);
  const ask=q=>{let answer='Of course. Take your time. You are doing well.';if(q.includes('medicine'))answer='Your next medicine reminder is at 8:00 AM. Please follow the plan given by your doctor or caregiver.';if(q.includes('circle'))answer='Your trusted circle includes family and caregivers. Open Your Circle to see them.';if(q.includes('game'))answer='Let’s keep your mind active. Try Memory Match for a few minutes.';setMessages([...messages,{from:'user',text:q},{from:'ai',text:answer}]);};
  return <View style={styles.screen}><Header onBack={onBack} title="Talking Help" right={<View style={styles.online}><View style={styles.onlineDot}/><Text style={styles.onlineText}>Online</Text></View>} /><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
  <View style={styles.assistant}><View style={styles.assistantIcon}><Text style={styles.brain}>◌</Text></View><View style={{flex:1}}><Text style={styles.assistantTitle}>Smaran Assistant</Text><Text style={styles.assistantSub}>Calm, simple and ready to listen.</Text></View></View>

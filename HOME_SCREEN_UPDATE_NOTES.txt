@@ -1,0 +1,36 @@
+SMARAN HOME SCREEN UPDATE
+==========================
+
+This update is designed for the existing Smaran React Native project structure.
+
+Changed files:
+- App.js
+- src/screens/HomeScreen.js
+- src/components/BottomNav.js
+- src/screens/TalkingHelpScreen.js
+
+Added files:
+- src/screens/MusicScreen.js
+- src/screens/RelaxScreen.js
+
+Main Home features implemented:
+- Dynamic Hello + Good Morning/Afternoon/Evening + current date
+- Reminder/sun button with pending reminder badge
+- Your Daily Task -> Games
+- Memory Garden -> Talking Help / Memory Assistant
+- Trip Down Memory Lane -> Photos
+- Scheduled -> Reminders
+- Daily progress banner (5-game target)
+- Today's Plan with completion / Remind Me actions
+- Full Schedule shortcut
+- Text composer with send action
+- Microphone button opens Talking Help
+- Camera button opens device camera, saves captured photo into Family Memories, then opens Photos
+- Bottom navigation: Home / Family / Photos / Music / Relax
+- Music screen uses the existing react-native-sound dependency and an internet audio stream
+- Relax screen provides a local 60-second breathing timer
+
+IMPORTANT:
+The zip intentionally contains the existing src/ and App.js scope only, matching the source package supplied for this task. Keep the rest of your existing Android/project files and package configuration unchanged.
+
+Replace the matching files in your current project with the files from this update, then rebuild the app.
