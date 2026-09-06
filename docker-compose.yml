@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: auth-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: authdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - authnet
+
+  auth-api:
+    image: nothisissubham/auth-service:latest
+    container_name: auth-api
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres123@db:5432/authdb
+      SECRET_KEY: change-me-in-production
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+    ports:
+      - "8000:8000"
+    networks:
+      - authnet
+
+networks:
+  authnet:
+    driver: bridge
+
+volumes:
+  pgdata:

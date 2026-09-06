@@ -14,6 +14,7 @@ import PhotosScreen from './src/screens/PhotosScreen';
 import CircleScreen from './src/screens/CircleScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import BiometricSetupScreen from './src/screens/BiometricSetupScreen';
+import SplashScreen from './src/screens/SplashScreen';
 import {COLORS} from './src/theme';
 import {authenticateBiometric, disableBiometric, isBiometricEnabled} from './src/services/biometric';
 import {cancelReminder, getScheduledReminders, prepareNotifications, syncReminderNotifications} from './src/services/notifications';
@@ -78,7 +79,7 @@ export default function App() {
 }
 
 function SmaranApp() {
-  const [screen,setScreen] = useState('login');
+  const [screen,setScreen] = useState('splash');
   const [profile,setProfile] = useState(DEFAULT_PROFILE);
   const [reminders,setReminders] = useState(DEFAULT_REMINDERS);
   const [people,setPeople] = useState([]);
@@ -87,10 +88,12 @@ function SmaranApp() {
   const [mode,setMode] = useState('patient');
   const [booting,setBooting] = useState(true);
   const [biometricBusy,setBiometricBusy] = useState(false);
+  const [splashFinished,setSplashFinished] = useState(false);
 
   const screenRef = useRef('login');
   const historyRef = useRef([]);
   const initializedRef = useRef(false);
+  const bootTargetRef = useRef('login');
 
   const setCurrentScreen = useCallback(next => {
     screenRef.current = next;
@@ -165,18 +168,16 @@ function SmaranApp() {
           if (!mounted) return;
           setBiometricBusy(false);
           if (result.success) {
-            historyRef.current = [];
-            setCurrentScreen('home');
+            bootTargetRef.current = 'home';
           } else {
-            historyRef.current = [];
-            setCurrentScreen('login');
+            bootTargetRef.current = 'login';
           }
         }
       } catch (error) {
         console.log('Smaran startup error:',error);
         if (mounted) {
           initializedRef.current = true;
-          setCurrentScreen('login');
+          bootTargetRef.current = 'login';
         }
       } finally {
         if (mounted) setBooting(false);
@@ -185,6 +186,14 @@ function SmaranApp() {
     boot();
     return () => {mounted = false;};
   },[setCurrentScreen]);
+
+  // The cultural splash lasts exactly 5 seconds. Navigation begins only
+  // after both the splash and normal app startup are ready.
+  useEffect(() => {
+    if (!splashFinished || booting || biometricBusy) return;
+    historyRef.current = [];
+    setCurrentScreen(bootTargetRef.current || 'login');
+  }, [splashFinished, booting, biometricBusy, setCurrentScreen]);
 
   // Persist every important state change. Navigation never clears this data.
   useEffect(() => {if (initializedRef.current) saveProfile(profile);},[profile]);
@@ -322,6 +331,14 @@ function SmaranApp() {
       setCurrentScreen('login');
     }
   };
+
+  if (screen === 'splash') {
+    return (
+      <SplashScreen
+        onFinished={() => setSplashFinished(true)}
+      />
+    );
+  }
 
   if (booting || biometricBusy) {
     return (
