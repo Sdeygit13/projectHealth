@@ -192,7 +192,7 @@ class ReminderActivity : Activity() {
     private fun stopReminder() {
         stopFeedback()
         SmaranAlarmManager.dismissNotification(this, reminderId)
-        SmaranAlarmManager.cancel(this, "$reminderId__snooze")
+        SmaranAlarmManager.cancel(this, "${reminderId}__snooze")
         finish()
     }
 
