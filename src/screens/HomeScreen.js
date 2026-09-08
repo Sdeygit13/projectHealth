@@ -1,7 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {
   Keyboard,
-  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
 import BottomNav from '../components/BottomNav';
 import Icon from '../components/Icon';
 import {COLORS, SHADOW} from '../theme';
+import {SmaranAnimated, SmaranPressable} from '../components/SmaranMotion';
 
 const HOME_BACKGROUND = '#FEF7E8';
 
@@ -205,7 +205,8 @@ export default function HomeScreen({
         {/* GREETING                                                         */}
         {/* ================================================================ */}
 
-        <View style={styles.header}>
+        <SmaranAnimated delay={40} duration={650} distance={14} style={styles.motionHeader}>
+          <View style={styles.header}>
           <View style={styles.headerCopy}>
             <Text style={styles.hello}>Hello,</Text>
 
@@ -229,7 +230,7 @@ export default function HomeScreen({
           </View>
 
           {/* Reminder notification button */}
-          <Pressable
+          <SmaranPressable
             onPress={() => onNavigate?.('reminders')}
             style={({pressed}) => [
               styles.reminderButton,
@@ -249,18 +250,23 @@ export default function HomeScreen({
                 </Text>
               </View>
             ) : null}
-          </Pressable>
-        </View>
+          </SmaranPressable>
+          </View>
+        </SmaranAnimated>
 
         {/* ================================================================ */}
         {/* FEATURE GRID                                                      */}
         {/* ================================================================ */}
 
         <View style={styles.featureGrid}>
-          {FEATURE_DATA.map(item => (
+          {FEATURE_DATA.map((item, index) => (
             <FeatureTile
               key={item.key}
-              {...item}
+              delay={160 + index * 90}
+              icon={item.icon}
+              title={item.title}
+              subtitle={item.subtitle}
+              background={item.background}
               onPress={() => handleFeaturePress(item)}
             />
           ))}
@@ -270,7 +276,8 @@ export default function HomeScreen({
         {/* DAILY PROGRESS                                                    */}
         {/* ================================================================ */}
 
-        <Pressable
+        <SmaranAnimated delay={570} duration={560} distance={18} style={styles.fullMotion}>
+        <SmaranPressable
           onPress={() => onNavigate?.('games')}
           style={({pressed}) => [
             styles.progressBanner,
@@ -300,16 +307,18 @@ export default function HomeScreen({
           </View>
 
           <Text style={styles.arrow}>›</Text>
-        </Pressable>
+        </SmaranPressable>
+        </SmaranAnimated>
 
         {/* ================================================================ */}
         {/* TODAY'S PLAN                                                      */}
         {/* ================================================================ */}
 
+        <SmaranAnimated delay={650} duration={500} distance={16} style={styles.fullMotion}>
         <View style={styles.planHeader}>
           <Text style={styles.planTitle}>Today's Plan</Text>
 
-          <Pressable
+          <SmaranPressable
             onPress={() => onNavigate?.('reminders')}
             style={({pressed}) => [
               styles.scheduleLink,
@@ -326,8 +335,9 @@ export default function HomeScreen({
             />
 
             <Text style={styles.scheduleText}>Full Schedule</Text>
-          </Pressable>
+          </SmaranPressable>
         </View>
+        </SmaranAnimated>
 
         {todayPlan.length > 0 ? (
           todayPlan.map((item, index) => (
@@ -335,10 +345,11 @@ export default function HomeScreen({
               key={item.id ?? `plan-${index}`}
               item={item}
               onToggle={() => onToggleReminder?.(item.id)}
+              delay={720 + index * 100}
             />
           ))
         ) : (
-          <Pressable
+          <SmaranPressable
             onPress={() => onNavigate?.('reminders')}
             style={({pressed}) => [
               styles.emptyPlan,
@@ -367,13 +378,14 @@ export default function HomeScreen({
             </View>
 
             <Text style={styles.arrow}>›</Text>
-          </Pressable>
+          </SmaranPressable>
         )}
 
         {/* ================================================================ */}
         {/* AI REMINDER / ASSISTANT                                           */}
         {/* ================================================================ */}
 
+        <SmaranAnimated delay={900} duration={600} distance={20} style={styles.fullMotion}>
         <View style={styles.aiReminderSection}>
           <View style={styles.aiReminderHeader}>
             <View style={styles.aiReminderTitleRow}>
@@ -431,7 +443,7 @@ export default function HomeScreen({
             />
 
             {message.trim() ? (
-              <Pressable
+              <SmaranPressable
                 onPress={submitMessage}
                 style={({pressed}) => [
                   styles.composerAction,
@@ -447,9 +459,9 @@ export default function HomeScreen({
                   color={COLORS.primaryDark}
                   strokeWidth={2.1}
                 />
-              </Pressable>
+              </SmaranPressable>
             ) : (
-              <Pressable
+              <SmaranPressable
                 onPress={handleMicrophone}
                 style={({pressed}) => [
                   styles.composerAction,
@@ -466,10 +478,10 @@ export default function HomeScreen({
                   color={COLORS.primaryDark}
                   strokeWidth={2.1}
                 />
-              </Pressable>
+              </SmaranPressable>
             )}
 
-            <Pressable
+            <SmaranPressable
               onPress={handleCamera}
               style={({pressed}) => [
                 styles.composerAction,
@@ -485,13 +497,14 @@ export default function HomeScreen({
                 color={COLORS.primaryDark}
                 strokeWidth={2}
               />
-            </Pressable>
+            </SmaranPressable>
           </View>
 
           <Text style={styles.aiHint}>
             Tap the microphone to talk to Smaran
           </Text>
         </View>
+        </SmaranAnimated>
 
       </ScrollView>
 
@@ -517,9 +530,11 @@ function FeatureTile({
   subtitle,
   background,
   onPress,
+  delay = 160,
 }) {
   return (
-    <Pressable
+    <SmaranAnimated delay={delay} duration={560} distance={20} style={styles.featureMotion}>
+    <SmaranPressable
       onPress={onPress}
       style={({pressed}) => [
         styles.featureTile,
@@ -556,7 +571,8 @@ function FeatureTile({
       </Text>
 
       <Text style={styles.featureArrow}>›</Text>
-    </Pressable>
+    </SmaranPressable>
+    </SmaranAnimated>
   );
 }
 
@@ -564,10 +580,11 @@ function FeatureTile({
 /* Plan Card                                                                  */
 /* -------------------------------------------------------------------------- */
 
-function PlanCard({item, onToggle}) {
+function PlanCard({item, onToggle, delay = 720}) {
   const isDone = Boolean(item?.done);
 
   return (
+    <SmaranAnimated delay={delay} duration={520} distance={18} style={styles.fullMotion}>
     <View style={styles.planCard}>
       <View
         style={[
@@ -582,7 +599,7 @@ function PlanCard({item, onToggle}) {
         />
       </View>
 
-      <Pressable
+      <SmaranPressable
         onPress={onToggle}
         style={styles.planMain}
         accessibilityRole="button"
@@ -608,9 +625,9 @@ function PlanCard({item, onToggle}) {
           numberOfLines={1}>
           {item?.detail || 'Smaran reminder'}
         </Text>
-      </Pressable>
+      </SmaranPressable>
 
-      <Pressable
+      <SmaranPressable
         onPress={onToggle}
         style={[
           styles.planButton,
@@ -635,8 +652,9 @@ function PlanCard({item, onToggle}) {
         <Text style={styles.planButtonText}>
           {isDone ? "I'm Done" : 'Remind Me'}
         </Text>
-      </Pressable>
+      </SmaranPressable>
     </View>
+    </SmaranAnimated>
   );
 }
 
@@ -1144,6 +1162,18 @@ const styles = StyleSheet.create({
     lineHeight: 13,
     color: COLORS.muted,
     fontWeight: '600',
+  },
+
+  motionHeader: {
+    width: '100%',
+  },
+
+  featureMotion: {
+    width: '48.2%',
+  },
+
+  fullMotion: {
+    width: '100%',
   },
 
   /* ====================================================================== */

@@ -1,4 +1,9 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+
 import {
   Alert,
   KeyboardAvoidingView,
@@ -11,10 +16,20 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import Header from '../components/Header';
-import {COLORS, SHADOW} from '../theme';
+
+import {
+  COLORS,
+  SHADOW,
+} from '../theme';
+
+import {
+  SmaranPressable,
+} from '../components/SmaranMotion';
+
 import {
   prepareNotifications,
   syncReminderNotifications,
@@ -33,56 +48,98 @@ function parseTime(time) {
   const date = new Date();
 
   if (!match) {
-    date.setHours(20, 30, 0, 0);
+    date.setHours(
+      20,
+      30,
+      0,
+      0,
+    );
+
     return date;
   }
 
   let hour = Number(match[1]);
+
   const minute = Number(match[2]);
 
-  if (Number.isNaN(hour) || Number.isNaN(minute)) {
-    date.setHours(20, 30, 0, 0);
+  if (
+    Number.isNaN(hour) ||
+    Number.isNaN(minute)
+  ) {
+    date.setHours(
+      20,
+      30,
+      0,
+      0,
+    );
+
     return date;
   }
 
-  const period = match[3].toUpperCase();
+  const period =
+    match[3].toUpperCase();
 
-  if (period === 'PM' && hour !== 12) {
+  if (
+    period === 'PM' &&
+    hour !== 12
+  ) {
     hour += 12;
   }
 
-  if (period === 'AM' && hour === 12) {
+  if (
+    period === 'AM' &&
+    hour === 12
+  ) {
     hour = 0;
   }
 
-  date.setHours(hour, minute, 0, 0);
+  date.setHours(
+    hour,
+    minute,
+    0,
+    0,
+  );
 
   return date;
 }
 
 function formatTime(date) {
-  if (!date || !(date instanceof Date) || Number.isNaN(date.getTime())) {
+  if (
+    !date ||
+    !(date instanceof Date) ||
+    Number.isNaN(date.getTime())
+  ) {
     return '08:30 PM';
   }
 
-  return date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return date.toLocaleTimeString(
+    'en-US',
+    {
+      hour: '2-digit',
+      minute: '2-digit',
+    },
+  );
 }
 
 function firstName(name) {
-  const value = String(name || '').trim();
+  const value = String(
+    name || '',
+  ).trim();
 
   if (!value) {
     return 'Patient';
   }
 
-  return value.split(/\s+/)[0] || 'Patient';
+  return (
+    value.split(/\s+/)[0] ||
+    'Patient'
+  );
 }
 
 function createReminderId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return `${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
 }
 
 function normalizeReminder(item) {
@@ -90,23 +147,44 @@ function normalizeReminder(item) {
     return null;
   }
 
-  const title = String(item.title || '').trim();
+  const title = String(
+    item.title || '',
+  ).trim();
 
   if (!title) {
     return null;
   }
 
   return {
-    id: String(item.id || createReminderId()),
-    time: String(item.time || '08:30 PM'),
+    id: String(
+      item.id ||
+        createReminderId(),
+    ),
+
+    time: String(
+      item.time ||
+        '08:30 PM',
+    ),
+
     title,
+
     detail:
-      String(item.detail || '').trim() || 'Smaran reminder',
-    icon:
-      String(item.icon || title.charAt(0) || 'R')
-        .charAt(0)
-        .toUpperCase(),
-    done: Boolean(item.done),
+      String(
+        item.detail || '',
+      ).trim() ||
+      'Smaran reminder',
+
+    icon: String(
+      item.icon ||
+        title.charAt(0) ||
+        'R',
+    )
+      .charAt(0)
+      .toUpperCase(),
+
+    done: Boolean(
+      item.done,
+    ),
   };
 }
 
@@ -120,31 +198,59 @@ export default function RemindersScreen({
   onRemindersChange,
   patientName,
 }) {
-  const [editor, setEditor] = useState(null);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [noticeOpen, setNoticeOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [editor, setEditor] =
+    useState(null);
+
+  const [
+    showTimePicker,
+    setShowTimePicker,
+  ] = useState(false);
+
+  const [
+    noticeOpen,
+    setNoticeOpen,
+  ] = useState(false);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  /* ------------------------------------------------------------------------ */
+  /* Safe reminder data                                                       */
+  /* ------------------------------------------------------------------------ */
 
   const safeReminders = useMemo(
     () =>
       Array.isArray(reminders)
-        ? reminders.map(normalizeReminder).filter(Boolean)
+        ? reminders
+            .map(
+              normalizeReminder,
+            )
+            .filter(Boolean)
         : [],
     [reminders],
   );
 
   const pending = useMemo(
-    () => safeReminders.filter(item => !item.done).length,
+    () =>
+      safeReminders.filter(
+        item => !item.done,
+      ).length,
     [safeReminders],
   );
 
   const completed = useMemo(
-    () => safeReminders.filter(item => item.done).length,
+    () =>
+      safeReminders.filter(
+        item => item.done,
+      ).length,
     [safeReminders],
   );
 
   const notifications = useMemo(
-    () => safeReminders.filter(item => !item.done),
+    () =>
+      safeReminders.filter(
+        item => !item.done,
+      ),
     [safeReminders],
   );
 
@@ -152,50 +258,63 @@ export default function RemindersScreen({
   /* Notification synchronization                                             */
   /* ------------------------------------------------------------------------ */
 
-  const syncNotifications = async nextReminders => {
-    try {
-      await prepareNotifications();
+  const syncNotifications =
+    async nextReminders => {
+      try {
+        await prepareNotifications();
 
-      const notificationReady = await syncReminderNotifications(
-        nextReminders,
-        patientName,
-      );
+        const notificationReady =
+          await syncReminderNotifications(
+            nextReminders,
+            patientName,
+          );
 
-      if (!notificationReady && Platform.OS === 'android') {
-        Alert.alert(
-          'Allow reminder alarms',
-          'Android may require Smaran to be allowed to schedule exact alarms so medicine and other reminders can arrive on time.',
-          [
-            {
-              text: 'Later',
-              style: 'cancel',
-            },
-            {
-              text: 'Open Settings',
-              onPress: () => {
-                try {
-                  openReminderAlarmSettings();
-                } catch (error) {
-                  console.warn(
-                    'Unable to open reminder alarm settings:',
-                    error,
-                  );
-                }
+        if (
+          !notificationReady &&
+          Platform.OS === 'android'
+        ) {
+          Alert.alert(
+            'Allow reminder alarms',
+
+            'Android may require Smaran to be allowed to schedule exact alarms so medicine and other reminders can arrive on time.',
+
+            [
+              {
+                text: 'Later',
+                style: 'cancel',
               },
-            },
-          ],
-        );
-      }
 
-      return notificationReady;
-    } catch (error) {
-      console.warn('Reminder notification sync failed:', error);
-      return false;
-    }
-  };
+              {
+                text: 'Open Settings',
+
+                onPress: () => {
+                  try {
+                    openReminderAlarmSettings();
+                  } catch (error) {
+                    console.warn(
+                      'Unable to open reminder alarm settings:',
+                      error,
+                    );
+                  }
+                },
+              },
+            ],
+          );
+        }
+
+        return notificationReady;
+      } catch (error) {
+        console.warn(
+          'Reminder notification sync failed:',
+          error,
+        );
+
+        return false;
+      }
+    };
 
   /* ------------------------------------------------------------------------ */
-  /* Initial notification sync                                                 */
+  /* Initial notification sync                                                */
   /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
@@ -203,30 +322,42 @@ export default function RemindersScreen({
       return;
     }
 
-    syncNotifications(safeReminders);
+    syncNotifications(
+      safeReminders,
+    );
   }, []);
 
   /* ------------------------------------------------------------------------ */
-  /* Toggle reminder                                                           */
+  /* Toggle reminder                                                          */
   /* ------------------------------------------------------------------------ */
 
   const toggle = async id => {
-    const nextReminders = safeReminders.map(item =>
-      item.id === id
-        ? {
-            ...item,
-            done: !item.done,
-          }
-        : item,
+    const nextReminders =
+      safeReminders.map(item =>
+        item.id === id
+          ? {
+              ...item,
+              done: !item.done,
+            }
+          : item,
+      );
+
+    if (
+      typeof onRemindersChange ===
+      'function'
+    ) {
+      onRemindersChange(
+        nextReminders,
+      );
+    }
+
+    await syncNotifications(
+      nextReminders,
     );
-
-    if (typeof onRemindersChange === 'function') onRemindersChange(nextReminders);
-
-    await syncNotifications(nextReminders);
   };
 
   /* ------------------------------------------------------------------------ */
-  /* Add reminder                                                              */
+  /* Add reminder                                                             */
   /* ------------------------------------------------------------------------ */
 
   const openAdd = () => {
@@ -244,7 +375,7 @@ export default function RemindersScreen({
   };
 
   /* ------------------------------------------------------------------------ */
-  /* Edit reminder                                                             */
+  /* Edit reminder                                                            */
   /* ------------------------------------------------------------------------ */
 
   const openEdit = item => {
@@ -257,56 +388,100 @@ export default function RemindersScreen({
   };
 
   /* ------------------------------------------------------------------------ */
-  /* Save reminder                                                             */
+  /* Save reminder                                                            */
   /* ------------------------------------------------------------------------ */
 
-  const saveEditor = async () => {
-    if (saving) {
-      return;
-    }
+  const saveEditor =
+    async () => {
+      if (saving) {
+        return;
+      }
 
-    if (!editor?.title?.trim()) {
-      Alert.alert(
-        'Reminder title required',
-        'Please enter what the patient needs to remember.',
-      );
-      return;
-    }
-
-    const title = editor.title.trim();
-
-    const nextItem = {
-      id: String(editor.id || createReminderId()),
-      time: editor.time || '08:30 PM',
-      title,
-      detail: editor.detail?.trim() || 'Smaran reminder',
-      icon: title.charAt(0).toUpperCase(),
-      done: Boolean(editor.done),
-    };
-
-    const nextReminders = editor.isNew
-      ? [...safeReminders, nextItem]
-      : safeReminders.map(item =>
-          item.id === nextItem.id ? nextItem : item,
+      if (
+        !editor?.title?.trim()
+      ) {
+        Alert.alert(
+          'Reminder title required',
+          'Please enter what the patient needs to remember.',
         );
 
-    try {
-      setSaving(true);
+        return;
+      }
 
-      if (typeof onRemindersChange === 'function') onRemindersChange(nextReminders);
-      setEditor(null);
-      setShowTimePicker(false);
+      const title =
+        editor.title.trim();
 
-      await syncNotifications(nextReminders);
-    } catch (error) {
-      console.warn('Unable to save reminder:', error);
-    } finally {
-      setSaving(false);
-    }
-  };
+      const nextItem = {
+        id: String(
+          editor.id ||
+            createReminderId(),
+        ),
+
+        time:
+          editor.time ||
+          '08:30 PM',
+
+        title,
+
+        detail:
+          editor.detail?.trim() ||
+          'Smaran reminder',
+
+        icon:
+          title
+            .charAt(0)
+            .toUpperCase(),
+
+        done: Boolean(
+          editor.done,
+        ),
+      };
+
+      const nextReminders =
+        editor.isNew
+          ? [
+              ...safeReminders,
+              nextItem,
+            ]
+          : safeReminders.map(
+              item =>
+                item.id ===
+                nextItem.id
+                  ? nextItem
+                  : item,
+            );
+
+      try {
+        setSaving(true);
+
+        if (
+          typeof onRemindersChange ===
+          'function'
+        ) {
+          onRemindersChange(
+            nextReminders,
+          );
+        }
+
+        setEditor(null);
+
+        setShowTimePicker(false);
+
+        await syncNotifications(
+          nextReminders,
+        );
+      } catch (error) {
+        console.warn(
+          'Unable to save reminder:',
+          error,
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
 
   /* ------------------------------------------------------------------------ */
-  /* Delete reminder                                                           */
+  /* Delete reminder                                                          */
   /* ------------------------------------------------------------------------ */
 
   const removeEditor = () => {
@@ -316,30 +491,51 @@ export default function RemindersScreen({
 
     Alert.alert(
       'Delete reminder?',
+
       'This reminder will also stop its scheduled notification.',
+
       [
         {
           text: 'Cancel',
           style: 'cancel',
         },
+
         {
           text: 'Delete',
           style: 'destructive',
+
           onPress: async () => {
-            const nextReminders = safeReminders.filter(
-              item => item.id !== editor.id,
-            );
+            const nextReminders =
+              safeReminders.filter(
+                item =>
+                  item.id !==
+                  editor.id,
+              );
 
             try {
               setSaving(true);
 
-              if (typeof onRemindersChange === 'function') onRemindersChange(nextReminders);
+              if (
+                typeof onRemindersChange ===
+                'function'
+              ) {
+                onRemindersChange(
+                  nextReminders,
+                );
+              }
+
               setEditor(null);
+
               setShowTimePicker(false);
 
-              await syncNotifications(nextReminders);
+              await syncNotifications(
+                nextReminders,
+              );
             } catch (error) {
-              console.warn('Unable to delete reminder:', error);
+              console.warn(
+                'Unable to delete reminder:',
+                error,
+              );
             } finally {
               setSaving(false);
             }
@@ -350,53 +546,73 @@ export default function RemindersScreen({
   };
 
   /* ------------------------------------------------------------------------ */
-  /* Notification preview                                                      */
+  /* Notification preview                                                     */
   /* ------------------------------------------------------------------------ */
 
-  const notificationText = item => {
-    if (!item) {
-      return '';
-    }
-
-    const name = firstName(patientName);
-    const title = String(item.title || 'reminder').toLowerCase();
-    const time = item.time || '08:30 PM';
-    const detail = String(item.detail || '').trim();
-
-    return `Dear ${name}, your ${title} is at ${time}${
-      detail ? ` ${detail.toLowerCase()}` : ''
-    }.`;
-  };
-
-  /* ------------------------------------------------------------------------ */
-  /* Time picker                                                               */
-  /* ------------------------------------------------------------------------ */
-
-  const handleTimeChange = (event, date) => {
-    setShowTimePicker(false);
-
-    if (event?.type === 'dismissed') {
-      return;
-    }
-
-    if (!date) {
-      return;
-    }
-
-    setEditor(previous => {
-      if (!previous) {
-        return previous;
+  const notificationText =
+    item => {
+      if (!item) {
+        return '';
       }
 
-      return {
-        ...previous,
-        time: formatTime(date),
-      };
-    });
-  };
+      const name =
+        firstName(
+          patientName,
+        );
+
+      const title = String(
+        item.title ||
+          'reminder',
+      ).toLowerCase();
+
+      const time =
+        item.time ||
+        '08:30 PM';
+
+      const detail = String(
+        item.detail || '',
+      ).trim();
+
+      return `Dear ${name}, your ${title} is at ${time}${
+        detail
+          ? ` ${detail.toLowerCase()}`
+          : ''
+      }.`;
+    };
 
   /* ------------------------------------------------------------------------ */
-  /* Render                                                                    */
+  /* Time picker                                                              */
+  /* ------------------------------------------------------------------------ */
+
+  const handleTimeChange =
+    (event, date) => {
+      setShowTimePicker(false);
+
+      if (
+        event?.type ===
+        'dismissed'
+      ) {
+        return;
+      }
+
+      if (!date) {
+        return;
+      }
+
+      setEditor(previous => {
+        if (!previous) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          time: formatTime(date),
+        };
+      });
+    };
+
+  /* ------------------------------------------------------------------------ */
+  /* Render                                                                   */
   /* ------------------------------------------------------------------------ */
 
   return (
@@ -405,147 +621,298 @@ export default function RemindersScreen({
         onBack={onBack}
         title="Your Reminders"
         right={
-          <Pressable
-            onPress={() => setNoticeOpen(true)}
-            style={styles.bellButton}
+          <SmaranPressable
+            onPress={() =>
+              setNoticeOpen(true)
+            }
+            style={
+              styles.bellButton
+            }
             accessibilityRole="button"
             accessibilityLabel="Open reminder notifications">
-            <Text style={styles.bell}>🔔</Text>
+            <Text style={styles.bell}>
+              🔔
+            </Text>
 
-            {notifications.length > 0 ? (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  {Math.min(notifications.length, 9)}
+            {notifications.length >
+            0 ? (
+              <View
+                style={
+                  styles.badge
+                }>
+                <Text
+                  style={
+                    styles.badgeText
+                  }>
+                  {Math.min(
+                    notifications.length,
+                    9,
+                  )}
                 </Text>
               </View>
             ) : null}
-          </Pressable>
+          </SmaranPressable>
         }
       />
 
       <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}>
+        contentContainerStyle={
+          styles.content
+        }
+        showsVerticalScrollIndicator={
+          false
+        }>
+
         {/* Summary */}
-        <View style={styles.summary}>
-          <View style={styles.summaryIcon}>
-            <Text style={styles.summaryIconText}>◷</Text>
+        <View
+          style={
+            styles.summary
+          }>
+          <View
+            style={
+              styles.summaryIcon
+            }>
+            <Text
+              style={
+                styles.summaryIconText
+              }>
+              ◷
+            </Text>
           </View>
 
-          <View style={styles.summaryTextContainer}>
-            <Text style={styles.summaryTitle}>
-              {pending} {pending === 1 ? 'thing' : 'things'} left today
+          <View
+            style={
+              styles.summaryTextContainer
+            }>
+            <Text
+              style={
+                styles.summaryTitle
+              }>
+              {pending}{' '}
+              {pending === 1
+                ? 'thing'
+                : 'things'}{' '}
+              left today
             </Text>
 
-            <Text style={styles.summarySub}>
-              Tap a reminder to complete it. Use the pencil to edit it.
+            <Text
+              style={
+                styles.summarySub
+              }>
+              Tap a reminder to complete
+              it. Use the pencil to edit
+              it.
             </Text>
           </View>
 
-          <View style={styles.progress}>
-            <Text style={styles.progressText}>
-              {completed}/{safeReminders.length}
+          <View
+            style={
+              styles.progress
+            }>
+            <Text
+              style={
+                styles.progressText
+              }>
+              {completed}/
+              {safeReminders.length}
             </Text>
           </View>
         </View>
 
         {/* Section */}
-        <Text style={styles.section}>TODAY&apos;S PLAN</Text>
+        <Text
+          style={
+            styles.section
+          }>
+          TODAY&apos;S PLAN
+        </Text>
 
         {/* Empty state */}
-        {safeReminders.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIcon}>
-              <Text style={styles.emptyIconText}>◷</Text>
+        {safeReminders.length ===
+        0 ? (
+          <View
+            style={
+              styles.emptyCard
+            }>
+            <View
+              style={
+                styles.emptyIcon
+              }>
+              <Text
+                style={
+                  styles.emptyIconText
+                }>
+                ◷
+              </Text>
             </View>
 
-            <Text style={styles.emptyTitle}>
+            <Text
+              style={
+                styles.emptyTitle
+              }>
               No reminders yet
             </Text>
 
-            <Text style={styles.emptyText}>
-              Add a medicine, appointment, hydration, or daily-care reminder
+            <Text
+              style={
+                styles.emptyText
+              }>
+              Add a medicine,
+              appointment, hydration,
+              or daily-care reminder
               to keep the day on track.
             </Text>
 
-            <Pressable
+            <SmaranPressable
               onPress={openAdd}
-              style={styles.emptyAddButton}
+              style={
+                styles.emptyAddButton
+              }
               accessibilityRole="button">
-              <Text style={styles.emptyAddButtonText}>
+              <Text
+                style={
+                  styles.emptyAddButtonText
+                }>
                 Add First Reminder
               </Text>
-            </Pressable>
+            </SmaranPressable>
           </View>
         ) : (
-          safeReminders.map(item => (
-            <View
-              key={item.id}
-              style={[styles.card, item.done && styles.done]}>
-              <Pressable
-                onPress={() => toggle(item.id)}
-                style={styles.cardMain}
-                accessibilityRole="button"
-                accessibilityLabel={`${
-                  item.done ? 'Completed' : 'Pending'
-                } reminder: ${item.title}, ${item.time}`}>
-                <View style={styles.icon}>
-                  <Text style={styles.iconText}>
-                    {item.icon ||
-                      item.title?.charAt(0)?.toUpperCase() ||
-                      'R'}
-                  </Text>
-                </View>
+          safeReminders.map(
+            (item, index) => (
+              <View
+                key={item.id}
+                style={[
+                  styles.card,
+                  item.done &&
+                    styles.done,
+                ]}>
 
-                <View style={styles.cardText}>
-                  <Text style={styles.time}>{item.time}</Text>
+                <SmaranPressable
+                  onPress={() =>
+                    toggle(item.id)
+                  }
+                  style={
+                    styles.cardMain
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`${
+                    item.done
+                      ? 'Completed'
+                      : 'Pending'
+                  } reminder: ${
+                    item.title
+                  }, ${
+                    item.time
+                  }`}>
 
-                  <Text
+                  <View
+                    style={
+                      styles.icon
+                    }>
+                    <Text
+                      style={
+                        styles.iconText
+                      }>
+                      {item.icon ||
+                        item.title
+                          ?.charAt(
+                            0,
+                          )
+                          ?.toUpperCase() ||
+                        'R'}
+                    </Text>
+                  </View>
+
+                  <View
+                    style={
+                      styles.cardText
+                    }>
+                    <Text
+                      style={
+                        styles.time
+                      }>
+                      {item.time}
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.title,
+                        item.done &&
+                          styles.doneTitle,
+                      ]}>
+                      {item.title}
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.detail
+                      }>
+                      {item.detail}
+                    </Text>
+                  </View>
+
+                  <View
                     style={[
-                      styles.title,
-                      item.done && styles.doneTitle,
+                      styles.check,
+                      item.done &&
+                        styles.checkDone,
                     ]}>
-                    {item.title}
-                  </Text>
+                    <Text
+                      style={
+                        styles.checkText
+                      }>
+                      {item.done
+                        ? '✓'
+                        : ''}
+                    </Text>
+                  </View>
+                </SmaranPressable>
 
-                  <Text style={styles.detail}>
-                    {item.detail}
+                <SmaranPressable
+                  onPress={() =>
+                    openEdit(item)
+                  }
+                  style={
+                    styles.editButton
+                  }
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Edit ${item.title}`}>
+                  <Text
+                    style={
+                      styles.editIcon
+                    }>
+                    ✎
                   </Text>
-                </View>
-
-                <View
-                  style={[
-                    styles.check,
-                    item.done && styles.checkDone,
-                  ]}>
-                  <Text style={styles.checkText}>
-                    {item.done ? '✓' : ''}
-                  </Text>
-                </View>
-              </Pressable>
-
-              <Pressable
-                onPress={() => openEdit(item)}
-                style={styles.editButton}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={`Edit ${item.title}`}>
-                <Text style={styles.editIcon}>✎</Text>
-              </Pressable>
-            </View>
-          ))
+                </SmaranPressable>
+              </View>
+            ),
+          )
         )}
 
         {/* Add reminder */}
-        {safeReminders.length > 0 ? (
-          <Pressable
+        {safeReminders.length >
+        0 ? (
+          <SmaranPressable
             onPress={openAdd}
             style={styles.add}
             accessibilityRole="button"
             accessibilityLabel="Add reminder">
-            <Text style={styles.addPlus}>＋</Text>
-            <Text style={styles.addText}>Add Reminder</Text>
-          </Pressable>
+            <Text
+              style={
+                styles.addPlus
+              }>
+              ＋
+            </Text>
+
+            <Text
+              style={
+                styles.addText
+              }>
+              Add Reminder
+            </Text>
+          </SmaranPressable>
         ) : null}
       </ScrollView>
 
@@ -559,113 +926,210 @@ export default function RemindersScreen({
         animationType="slide"
         onRequestClose={() => {
           if (!saving) {
-            setShowTimePicker(false);
+            setShowTimePicker(
+              false,
+            );
+
             setEditor(null);
           }
         }}>
+
         <KeyboardAvoidingView
-          style={styles.modalBackdrop}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.editorCard}>
+          style={
+            styles.modalBackdrop
+          }
+          behavior={
+            Platform.OS === 'ios'
+              ? 'padding'
+              : undefined
+          }>
+
+          <View
+            style={
+              styles.editorCard
+            }>
+
             <ScrollView
               keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.editorScrollContent}>
-              <View style={styles.modalTop}>
-                <View style={styles.modalHeading}>
-                  <Text style={styles.modalEyebrow}>
+              showsVerticalScrollIndicator={
+                false
+              }
+              contentContainerStyle={
+                styles.editorScrollContent
+              }>
+
+              <View
+                style={
+                  styles.modalTop
+                }>
+                <View
+                  style={
+                    styles.modalHeading
+                  }>
+                  <Text
+                    style={
+                      styles.modalEyebrow
+                    }>
                     {editor?.isNew
                       ? 'NEW REMINDER'
                       : 'EDIT REMINDER'}
                   </Text>
 
-                  <Text style={styles.modalTitle}>
-                    Make the reminder fit the day
+                  <Text
+                    style={
+                      styles.modalTitle
+                    }>
+                    Make the reminder fit
+                    the day
                   </Text>
                 </View>
 
                 <Pressable
                   onPress={() => {
                     if (!saving) {
-                      setShowTimePicker(false);
+                      setShowTimePicker(
+                        false,
+                      );
+
                       setEditor(null);
                     }
                   }}
-                  style={styles.close}
+                  style={
+                    styles.close
+                  }
                   accessibilityRole="button"
                   accessibilityLabel="Close reminder editor">
-                  <Text style={styles.closeText}>×</Text>
+                  <Text
+                    style={
+                      styles.closeText
+                    }>
+                    ×
+                  </Text>
                 </Pressable>
               </View>
 
               {/* Title */}
-              <Text style={styles.label}>Reminder title</Text>
+              <Text
+                style={
+                  styles.label
+                }>
+                Reminder title
+              </Text>
 
               <TextInput
-                value={editor?.title || ''}
+                value={
+                  editor?.title ||
+                  ''
+                }
                 onChangeText={value =>
-                  setEditor(previous => ({
-                    ...previous,
-                    title: value,
-                  }))
+                  setEditor(
+                    previous => ({
+                      ...previous,
+                      title: value,
+                    }),
+                  )
                 }
                 placeholder="e.g. Morning medicine"
-                placeholderTextColor={COLORS.muted}
-                style={styles.input}
+                placeholderTextColor={
+                  COLORS.muted
+                }
+                style={
+                  styles.input
+                }
                 maxLength={80}
                 editable={!saving}
                 returnKeyType="next"
               />
 
               {/* Time */}
-              <Text style={styles.label}>Time</Text>
+              <Text
+                style={
+                  styles.label
+                }>
+                Time
+              </Text>
 
               <Pressable
                 onPress={() => {
                   if (!saving) {
-                    setShowTimePicker(true);
+                    setShowTimePicker(
+                      true,
+                    );
                   }
                 }}
-                style={styles.timeInput}
+                style={
+                  styles.timeInput
+                }
                 accessibilityRole="button"
                 accessibilityLabel={`Reminder time ${
-                  editor?.time || 'Choose time'
+                  editor?.time ||
+                  'Choose time'
                 }`}>
-                <Text style={styles.timeInputText}>
-                  {editor?.time || 'Choose time'}
+
+                <Text
+                  style={
+                    styles.timeInputText
+                  }>
+                  {editor?.time ||
+                    'Choose time'}
                 </Text>
 
-                <Text style={styles.timeArrow}>⌄</Text>
+                <Text
+                  style={
+                    styles.timeArrow
+                  }>
+                  ⌄
+                </Text>
               </Pressable>
 
               {showTimePicker ? (
                 <DateTimePicker
-                  value={parseTime(editor?.time)}
+                  value={parseTime(
+                    editor?.time,
+                  )}
                   mode="time"
                   is24Hour={false}
                   display={
-                    Platform.OS === 'ios'
+                    Platform.OS ===
+                    'ios'
                       ? 'spinner'
                       : 'default'
                   }
-                  onChange={handleTimeChange}
+                  onChange={
+                    handleTimeChange
+                  }
                 />
               ) : null}
 
               {/* Details */}
-              <Text style={styles.label}>Details</Text>
+              <Text
+                style={
+                  styles.label
+                }>
+                Details
+              </Text>
 
               <TextInput
-                value={editor?.detail || ''}
+                value={
+                  editor?.detail ||
+                  ''
+                }
                 onChangeText={value =>
-                  setEditor(previous => ({
-                    ...previous,
-                    detail: value,
-                  }))
+                  setEditor(
+                    previous => ({
+                      ...previous,
+                      detail: value,
+                    }),
+                  )
                 }
                 placeholder="e.g. Before breakfast"
-                placeholderTextColor={COLORS.muted}
-                style={[styles.input, styles.detailInput]}
+                placeholderTextColor={
+                  COLORS.muted
+                }
+                style={[
+                  styles.input,
+                  styles.detailInput,
+                ]}
                 multiline
                 maxLength={180}
                 editable={!saving}
@@ -673,51 +1137,92 @@ export default function RemindersScreen({
               />
 
               {/* Notification preview */}
-              <View style={styles.notificationPreview}>
-                <Text style={styles.previewIcon}>🔔</Text>
+              <View
+                style={
+                  styles.notificationPreview
+                }>
+                <Text
+                  style={
+                    styles.previewIcon
+                  }>
+                  🔔
+                </Text>
 
-                <View style={styles.previewContent}>
-                  <Text style={styles.previewTitle}>
+                <View
+                  style={
+                    styles.previewContent
+                  }>
+                  <Text
+                    style={
+                      styles.previewTitle
+                    }>
                     Notification preview
                   </Text>
 
-                  <Text style={styles.previewText}>
-                    {editor ? notificationText(editor) : ''}
+                  <Text
+                    style={
+                      styles.previewText
+                    }>
+                    {editor
+                      ? notificationText(
+                          editor,
+                        )
+                      : ''}
                   </Text>
                 </View>
               </View>
 
               {/* Save */}
               <Pressable
-                onPress={saveEditor}
+                onPress={
+                  saveEditor
+                }
                 disabled={saving}
                 style={[
                   styles.saveButton,
-                  saving && styles.saveButtonDisabled,
+                  saving &&
+                    styles.saveButtonDisabled,
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel="Save reminder">
-                <Text style={styles.saveButtonText}>
-                  {saving ? 'Saving...' : 'Save Reminder'}
+
+                <Text
+                  style={
+                    styles.saveButtonText
+                  }>
+                  {saving
+                    ? 'Saving...'
+                    : 'Save Reminder'}
                 </Text>
 
                 {!saving ? (
-                  <Text style={styles.saveArrow}>→</Text>
+                  <Text
+                    style={
+                      styles.saveArrow
+                    }>
+                    →
+                  </Text>
                 ) : null}
               </Pressable>
 
               {/* Delete */}
               {!editor?.isNew ? (
                 <Pressable
-                  onPress={removeEditor}
+                  onPress={
+                    removeEditor
+                  }
                   disabled={saving}
-                  style={styles.deleteButton}
+                  style={
+                    styles.deleteButton
+                  }
                   accessibilityRole="button"
                   accessibilityLabel="Delete reminder">
+
                   <Text
                     style={[
                       styles.deleteText,
-                      saving && styles.disabledDeleteText,
+                      saving &&
+                        styles.disabledDeleteText,
                     ]}>
                     Delete reminder
                   </Text>
@@ -736,55 +1241,110 @@ export default function RemindersScreen({
         visible={noticeOpen}
         transparent
         animationType="fade"
-        onRequestClose={() => setNoticeOpen(false)}>
+        onRequestClose={() =>
+          setNoticeOpen(false)
+        }>
+
         <Pressable
-          style={styles.noticeBackdrop}
-          onPress={() => setNoticeOpen(false)}>
-          <Pressable
-            style={styles.noticeCard}
+          style={
+            styles.noticeBackdrop
+          }
+          onPress={() =>
+            setNoticeOpen(false)
+          }>
+
+          <SmaranPressable
+            style={
+              styles.noticeCard
+            }
             onPress={() => {}}
             accessibilityRole="dialog">
-            <View style={styles.noticeHeader}>
-              <Text style={styles.noticeTitle}>
+
+            <View
+              style={
+                styles.noticeHeader
+              }>
+              <Text
+                style={
+                  styles.noticeTitle
+                }>
                 Smaran notifications
               </Text>
 
               <Pressable
-                onPress={() => setNoticeOpen(false)}
+                onPress={() =>
+                  setNoticeOpen(
+                    false,
+                  )
+                }
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel="Close notifications">
-                <Text style={styles.closeText}>×</Text>
+
+                <Text
+                  style={
+                    styles.closeText
+                  }>
+                  ×
+                </Text>
               </Pressable>
             </View>
 
             {notifications.length ? (
-              notifications.map(item => (
-                <View
-                  key={item.id}
-                  style={styles.noticeRow}>
-                  <View style={styles.noticeDot}>
-                    <Text style={styles.noticeDotText}>🔔</Text>
-                  </View>
+              notifications.map(
+                item => (
+                  <View
+                    key={item.id}
+                    style={
+                      styles.noticeRow
+                    }>
 
-                  <View style={styles.noticeContent}>
-                    <Text style={styles.noticeTime}>
-                      {item.time}
-                    </Text>
+                    <View
+                      style={
+                        styles.noticeDot
+                      }>
+                      <Text
+                        style={
+                          styles.noticeDotText
+                        }>
+                        🔔
+                      </Text>
+                    </View>
 
-                    <Text style={styles.noticeText}>
-                      {notificationText(item)}
-                    </Text>
+                    <View
+                      style={
+                        styles.noticeContent
+                      }>
+                      <Text
+                        style={
+                          styles.noticeTime
+                        }>
+                        {item.time}
+                      </Text>
+
+                      <Text
+                        style={
+                          styles.noticeText
+                        }>
+                        {notificationText(
+                          item,
+                        )}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              ))
+                ),
+              )
             ) : (
-              <Text style={styles.emptyNotice}>
-                You&apos;re all caught up. No pending reminder
+              <Text
+                style={
+                  styles.emptyNotice
+                }>
+                You&apos;re all caught up.
+                No pending reminder
                 notifications.
               </Text>
             )}
-          </Pressable>
+          </SmaranPressable>
         </Pressable>
       </Modal>
     </View>
@@ -796,9 +1356,24 @@ export default function RemindersScreen({
 /* -------------------------------------------------------------------------- */
 
 const styles = StyleSheet.create({
+  fullWidth: {
+    width: '100%',
+  },
+
+  editorMotion: {
+    width: '100%',
+    maxHeight: '92%',
+  },
+
+  noticeMotion: {
+    width: '90%',
+    maxHeight: '75%',
+  },
+
   screen: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor:
+      COLORS.background,
   },
 
   content: {
@@ -807,21 +1382,32 @@ const styles = StyleSheet.create({
   },
 
   summary: {
-    backgroundColor: COLORS.primaryDeep,
+    backgroundColor:
+      COLORS.primaryDeep,
+
     borderRadius: 21,
+
     padding: 16,
+
     flexDirection: 'row',
+
     alignItems: 'center',
+
     ...SHADOW,
   },
 
   summaryIcon: {
     width: 48,
     height: 48,
+
     borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.14)',
+
+    backgroundColor:
+      'rgba(255,255,255,0.14)',
+
     alignItems: 'center',
     justifyContent: 'center',
+
     marginRight: 12,
   },
 
@@ -851,8 +1437,12 @@ const styles = StyleSheet.create({
   progress: {
     width: 43,
     height: 43,
+
     borderRadius: 22,
-    backgroundColor: COLORS.white,
+
+    backgroundColor:
+      COLORS.white,
+
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -867,28 +1457,42 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: COLORS.primaryDark,
     fontWeight: '900',
+
     letterSpacing: 1.2,
+
     marginTop: 22,
     marginBottom: 10,
   },
 
-  /* Empty state */
+  /* ------------------------------------------------------------------------ */
+  /* Empty state                                                              */
+  /* ------------------------------------------------------------------------ */
 
   emptyCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor:
+      COLORS.white,
+
     borderRadius: 20,
+
     padding: 22,
+
     alignItems: 'center',
+
     ...SHADOW,
   },
 
   emptyIcon: {
     width: 58,
     height: 58,
+
     borderRadius: 20,
-    backgroundColor: COLORS.primarySoft,
+
+    backgroundColor:
+      COLORS.primarySoft,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     marginBottom: 12,
   },
 
@@ -906,19 +1510,29 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 12,
     color: COLORS.muted,
+
     textAlign: 'center',
+
     lineHeight: 18,
+
     marginTop: 7,
+
     maxWidth: 300,
   },
 
   emptyAddButton: {
     minHeight: 46,
+
     paddingHorizontal: 20,
+
     borderRadius: 15,
-    backgroundColor: COLORS.primary,
+
+    backgroundColor:
+      COLORS.primary,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     marginTop: 17,
   },
 
@@ -928,22 +1542,50 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  /* Reminder cards */
+  /* ------------------------------------------------------------------------ */
+  /* Reminder cards                                                           */
+  /* ------------------------------------------------------------------------ */
 
   card: {
-    backgroundColor: COLORS.white,
+    /*
+     * IMPORTANT LAYOUT FIX
+     *
+     * The card must be content-driven.
+     * Do not put it inside another flex:1 /
+     * animated layout wrapper.
+     */
+    width: '100%',
+
+    alignSelf: 'flex-start',
+
+    flexGrow: 0,
+
+    flexShrink: 0,
+
+    backgroundColor:
+      COLORS.white,
+
     borderRadius: 18,
+
     padding: 13,
+
     marginBottom: 10,
+
     flexDirection: 'row',
+
     alignItems: 'center',
+
     ...SHADOW,
   },
 
   cardMain: {
     flex: 1,
+
     flexDirection: 'row',
+
     alignItems: 'center',
+
+    minWidth: 0,
   },
 
   done: {
@@ -953,10 +1595,15 @@ const styles = StyleSheet.create({
   icon: {
     width: 48,
     height: 48,
+
     borderRadius: 16,
-    backgroundColor: COLORS.primarySoft,
+
+    backgroundColor:
+      COLORS.primarySoft,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     marginRight: 11,
   },
 
@@ -981,32 +1628,42 @@ const styles = StyleSheet.create({
     fontSize: 15.5,
     color: COLORS.text,
     fontWeight: '900',
+
     marginTop: 2,
   },
 
   doneTitle: {
-    textDecorationLine: 'line-through',
+    textDecorationLine:
+      'line-through',
   },
 
   detail: {
     fontSize: 11,
     color: COLORS.muted,
+
     marginTop: 2,
   },
 
   check: {
     width: 27,
     height: 27,
+
     borderRadius: 14,
+
     borderWidth: 2,
-    borderColor: COLORS.primary,
+
+    borderColor:
+      COLORS.primary,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     marginLeft: 8,
   },
 
   checkDone: {
-    backgroundColor: COLORS.primary,
+    backgroundColor:
+      COLORS.primary,
   },
 
   checkText: {
@@ -1017,10 +1674,15 @@ const styles = StyleSheet.create({
   editButton: {
     width: 36,
     height: 36,
+
     borderRadius: 18,
-    backgroundColor: COLORS.mint,
+
+    backgroundColor:
+      COLORS.mint,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     marginLeft: 8,
   },
 
@@ -1030,17 +1692,27 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  /* Add button */
+  /* ------------------------------------------------------------------------ */
+  /* Add button                                                               */
+  /* ------------------------------------------------------------------------ */
 
   add: {
     height: 54,
+
     borderRadius: 17,
+
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
+
+    borderColor:
+      COLORS.primary,
+
     borderStyle: 'dashed',
+
     alignItems: 'center',
     justifyContent: 'center',
+
     flexDirection: 'row',
+
     marginTop: 2,
   },
 
@@ -1053,16 +1725,23 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDark,
     fontSize: 15,
     fontWeight: '900',
+
     marginLeft: 6,
   },
 
-  /* Bell */
+  /* ------------------------------------------------------------------------ */
+  /* Bell                                                                     */
+  /* ------------------------------------------------------------------------ */
 
   bellButton: {
     width: 44,
     height: 44,
+
     borderRadius: 14,
-    backgroundColor: COLORS.primarySoft,
+
+    backgroundColor:
+      COLORS.primarySoft,
+
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1075,14 +1754,21 @@ const styles = StyleSheet.create({
 
   badge: {
     position: 'absolute',
+
     right: -2,
     top: -2,
+
     minWidth: 18,
     height: 18,
+
     borderRadius: 9,
-    backgroundColor: COLORS.danger,
+
+    backgroundColor:
+      COLORS.danger,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     paddingHorizontal: 4,
   },
 
@@ -1092,130 +1778,201 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  /* Editor modal */
+  /* ------------------------------------------------------------------------ */
+  /* Editor modal                                                             */
+  /* ------------------------------------------------------------------------ */
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.42)',
+
+    backgroundColor:
+      'rgba(0,0,0,0.42)',
+
     justifyContent: 'flex-end',
   },
 
   editorCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor:
+      COLORS.white,
+
     borderTopLeftRadius: 28,
+
     borderTopRightRadius: 28,
+
     maxHeight: '92%',
   },
 
   editorScrollContent: {
     padding: 20,
+
     paddingBottom: 30,
   },
 
   modalTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+
+    justifyContent:
+      'space-between',
+
     alignItems: 'flex-start',
   },
 
   modalHeading: {
     flex: 1,
+
     paddingRight: 12,
   },
 
   modalEyebrow: {
     fontSize: 10,
+
     letterSpacing: 1.3,
-    color: COLORS.primaryDark,
+
+    color:
+      COLORS.primaryDark,
+
     fontWeight: '900',
   },
 
   modalTitle: {
     fontSize: 21,
+
     lineHeight: 27,
+
     color: COLORS.text,
+
     fontWeight: '900',
+
     marginTop: 4,
+
     maxWidth: 300,
   },
 
   close: {
     width: 38,
     height: 38,
+
     borderRadius: 19,
-    backgroundColor: COLORS.primarySoft,
+
+    backgroundColor:
+      COLORS.primarySoft,
+
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   closeText: {
     fontSize: 24,
-    color: COLORS.primaryDark,
+
+    color:
+      COLORS.primaryDark,
+
     lineHeight: 25,
   },
 
   label: {
     fontSize: 12.5,
+
     color: COLORS.text,
+
     fontWeight: '900',
+
     marginTop: 18,
+
     marginBottom: 7,
   },
 
   input: {
     minHeight: 52,
+
     borderRadius: 15,
+
     borderWidth: 1.2,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.white,
+
+    borderColor:
+      COLORS.border,
+
+    backgroundColor:
+      COLORS.white,
+
     paddingHorizontal: 14,
+
     fontSize: 15,
+
     color: COLORS.text,
+
     fontWeight: '700',
   },
 
   detailInput: {
     height: 82,
+
     paddingTop: 13,
   },
 
   timeInput: {
     height: 52,
+
     borderRadius: 15,
+
     borderWidth: 1.2,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.mint,
+
+    borderColor:
+      COLORS.border,
+
+    backgroundColor:
+      COLORS.mint,
+
     paddingHorizontal: 14,
+
     flexDirection: 'row',
+
     alignItems: 'center',
-    justifyContent: 'space-between',
+
+    justifyContent:
+      'space-between',
   },
 
   timeInputText: {
     fontSize: 15,
+
     color: COLORS.text,
+
     fontWeight: '900',
   },
 
   timeArrow: {
     fontSize: 18,
-    color: COLORS.primaryDark,
+
+    color:
+      COLORS.primaryDark,
   },
 
-  /* Notification preview */
+  /* ------------------------------------------------------------------------ */
+  /* Notification preview                                                     */
+  /* ------------------------------------------------------------------------ */
 
   notificationPreview: {
     marginTop: 17,
+
     padding: 13,
+
     borderRadius: 16,
-    backgroundColor: COLORS.mint,
+
+    backgroundColor:
+      COLORS.mint,
+
     flexDirection: 'row',
+
     alignItems: 'flex-start',
   },
 
   previewIcon: {
     fontSize: 20,
-    color: COLORS.primaryDark,
+
+    color:
+      COLORS.primaryDark,
+
     marginRight: 10,
   },
 
@@ -1225,26 +1982,40 @@ const styles = StyleSheet.create({
 
   previewTitle: {
     fontSize: 11,
-    color: COLORS.primaryDark,
+
+    color:
+      COLORS.primaryDark,
+
     fontWeight: '900',
   },
 
   previewText: {
     fontSize: 11,
+
     color: COLORS.text,
+
     lineHeight: 16,
+
     marginTop: 3,
   },
 
-  /* Save */
+  /* ------------------------------------------------------------------------ */
+  /* Save                                                                     */
+  /* ------------------------------------------------------------------------ */
 
   saveButton: {
     height: 54,
+
     borderRadius: 17,
-    backgroundColor: COLORS.primary,
+
+    backgroundColor:
+      COLORS.primary,
+
     marginTop: 18,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     flexDirection: 'row',
   },
 
@@ -1254,26 +2025,38 @@ const styles = StyleSheet.create({
 
   saveButtonText: {
     fontSize: 15,
-    color: COLORS.white,
+
+    color:
+      COLORS.white,
+
     fontWeight: '900',
   },
 
   saveArrow: {
     fontSize: 20,
-    color: COLORS.white,
+
+    color:
+      COLORS.white,
+
     marginLeft: 9,
   },
 
   deleteButton: {
     height: 44,
+
     alignItems: 'center',
+
     justifyContent: 'center',
+
     marginTop: 5,
   },
 
   deleteText: {
     fontSize: 12,
-    color: COLORS.danger,
+
+    color:
+      COLORS.danger,
+
     fontWeight: '900',
   },
 
@@ -1281,58 +2064,89 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 
-  /* Notification popup */
+  /* ------------------------------------------------------------------------ */
+  /* Notification popup                                                       */
+  /* ------------------------------------------------------------------------ */
 
   noticeBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.32)',
+
+    backgroundColor:
+      'rgba(0,0,0,0.32)',
+
     alignItems: 'flex-end',
+
     paddingTop: 75,
+
     paddingRight: 12,
   },
 
   noticeCard: {
     width: '90%',
+
     maxHeight: '75%',
-    backgroundColor: COLORS.white,
+
+    backgroundColor:
+      COLORS.white,
+
     borderRadius: 20,
+
     padding: 16,
+
     ...SHADOW,
   },
 
   noticeHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+
+    justifyContent:
+      'space-between',
+
     alignItems: 'center',
+
     marginBottom: 10,
   },
 
   noticeTitle: {
     fontSize: 16,
+
     color: COLORS.text,
+
     fontWeight: '900',
   },
 
   noticeRow: {
     flexDirection: 'row',
+
     paddingVertical: 11,
+
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+
+    borderTopColor:
+      COLORS.border,
   },
 
   noticeDot: {
     width: 30,
     height: 30,
+
     borderRadius: 15,
-    backgroundColor: COLORS.primarySoft,
+
+    backgroundColor:
+      COLORS.primarySoft,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     marginRight: 10,
   },
 
   noticeDotText: {
     fontSize: 22,
-    color: COLORS.primaryDark,
+
+    color:
+      COLORS.primaryDark,
+
     lineHeight: 22,
   },
 
@@ -1342,21 +2156,30 @@ const styles = StyleSheet.create({
 
   noticeTime: {
     fontSize: 10,
-    color: COLORS.primaryDark,
+
+    color:
+      COLORS.primaryDark,
+
     fontWeight: '900',
   },
 
   noticeText: {
     fontSize: 11,
+
     color: COLORS.text,
+
     lineHeight: 16,
+
     marginTop: 3,
   },
 
   emptyNotice: {
     fontSize: 12,
+
     color: COLORS.muted,
+
     lineHeight: 18,
+
     paddingVertical: 12,
   },
 });

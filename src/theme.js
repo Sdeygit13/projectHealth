@@ -29,3 +29,16 @@ export const SHADOW = {
   shadowRadius: 10,
   elevation: 3,
 };
+export const ANIMATION = {
+  duration: {
+    slow: 800,      // screen transitions
+    medium: 500,    // micro‑interactions
+    fast: 300,      // taps
+    micro: 180,     // subtle feedback
+  },
+  easing: {
+    standard: 'ease-in-out',
+    spring: 'spring',
+  },
+  reduceMotion: false, // will be toggled via profile
+};

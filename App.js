@@ -29,17 +29,21 @@ import BiometricSetupScreen from './src/screens/BiometricSetupScreen';
 import SplashScreen from './src/screens/SplashScreen';
 
 import {COLORS} from './src/theme';
+
 import {
   authenticateBiometric,
   disableBiometric,
   isBiometricEnabled,
 } from './src/services/biometric';
+
 import {
   cancelReminder as cancelLegacyReminder,
   getScheduledReminders,
 } from './src/services/notifications';
+
 import SmaranAlarm from './src/services/SmaranAlarm';
 import {launchCamera} from 'react-native-image-picker';
+
 import {
   clearAllStorage,
   loadMemories,
@@ -51,6 +55,10 @@ import {
   saveProfile,
   saveReminders,
 } from './src/services/storage';
+
+/* -------------------------------------------------------------------------- */
+/* Default data                                                               */
+/* -------------------------------------------------------------------------- */
 
 const DEFAULT_REMINDERS = [
   {
@@ -87,20 +95,26 @@ const DEFAULT_PROFILE = {
   caregiverName: 'Caregiver',
   caregiverMobile: '',
   caregiverCountryCode: '+91',
+
   patientName: 'Patient',
   patientDob: '',
   patientAge: '',
   age: '',
   patientGender: '',
   patientAddress: '',
+
   relationship: '',
+
   diagnosis: '',
   severity: '',
   symptoms: '',
+
   physicianName: '',
   physicianMobile: '',
   physicianCountryCode: '+91',
+
   emergencyContacts: [],
+
   language: 'English',
   mode: 'patient',
 };
@@ -124,13 +138,19 @@ const SUPPORTED_LANGUAGES = [
   'Assamese',
 ];
 
+/* -------------------------------------------------------------------------- */
+/* Normalizers                                                                */
+/* -------------------------------------------------------------------------- */
+
 const normalizeReminders = list =>
   (Array.isArray(list) ? list : []).map((item, index) => ({
     ...item,
     id: String(item?.id || `reminder-${Date.now()}-${index}`),
     title: String(item?.title || item?.name || 'Reminder'),
     time: String(item?.time || item?.startTime || '08:30 PM'),
-    detail: String(item?.detail || item?.description || 'Smaran reminder'),
+    detail: String(
+      item?.detail || item?.description || 'Smaran reminder',
+    ),
     done: Boolean(item?.done || item?.completed),
   }));
 
@@ -150,45 +170,94 @@ const normalizeAlbums = list =>
   (Array.isArray(list) ? list : [])
     .map((album, index) => ({
       ...album,
-      id: String(album?.id || `album-${Date.now()}-${index}`),
-      title: String(album?.title || 'Family Memories'),
-      description: String(album?.description || 'A cherished collection'),
+
+      id: String(
+        album?.id || `album-${Date.now()}-${index}`,
+      ),
+
+      title: String(
+        album?.title || 'Family Memories',
+      ),
+
+      description: String(
+        album?.description || 'A cherished collection',
+      ),
+
       collection: album?.collection || 'family',
+
       images: Array.isArray(album?.images)
         ? album.images
-            .map(item => (typeof item === 'string' ? {uri: item} : item))
+            .map(item =>
+              typeof item === 'string'
+                ? {uri: item}
+                : item,
+            )
             .filter(item => item?.uri)
         : [],
     }))
     .filter(album => album.images.length);
 
+/* -------------------------------------------------------------------------- */
+/* App root                                                                   */
+/* -------------------------------------------------------------------------- */
+
 export default function App() {
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <SafeAreaView
+        style={styles.safeArea}
+        edges={['top', 'bottom']}>
         <SmaranApp />
       </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Main application                                                           */
+/* -------------------------------------------------------------------------- */
+
 function SmaranApp() {
   const [screen, setScreen] = useState('splash');
-  const [profile, setProfile] = useState(DEFAULT_PROFILE);
-  const [reminders, setReminders] = useState(DEFAULT_REMINDERS);
+
+  const [profile, setProfile] =
+    useState(DEFAULT_PROFILE);
+
+  const [reminders, setReminders] =
+    useState(DEFAULT_REMINDERS);
+
   const [people, setPeople] = useState([]);
+
   const [memories, setMemories] = useState([]);
-  const [language, setLanguage] = useState('English');
-  const [mode, setMode] = useState('patient');
-  const [booting, setBooting] = useState(true);
-  const [biometricBusy, setBiometricBusy] = useState(false);
-  const [splashFinished, setSplashFinished] = useState(false);
+
+  const [language, setLanguage] =
+    useState('English');
+
+  const [mode, setMode] =
+    useState('patient');
+
+  const [booting, setBooting] =
+    useState(true);
+
+  const [biometricBusy, setBiometricBusy] =
+    useState(false);
+
+  const [splashFinished, setSplashFinished] =
+    useState(false);
 
   const screenRef = useRef('login');
+
   const historyRef = useRef([]);
+
   const initializedRef = useRef(false);
+
   const bootTargetRef = useRef('login');
+
   const loggingOutRef = useRef(false);
+
+  /* ------------------------------------------------------------------------ */
+  /* Screen navigation                                                        */
+  /* ------------------------------------------------------------------------ */
 
   const setCurrentScreen = useCallback(next => {
     screenRef.current = next;
@@ -203,15 +272,24 @@ function SmaranApp() {
 
     if (stack.length) {
       const next = [...stack];
+
       const previous = next.pop();
+
       historyRef.current = next;
+
       setCurrentScreen(previous);
+
       return true;
     }
 
-    if (ROOT_SCREENS.includes(current) && current !== 'home') {
+    if (
+      ROOT_SCREENS.includes(current) &&
+      current !== 'home'
+    ) {
       setCurrentScreen('home');
+
       historyRef.current = [];
+
       return true;
     }
 
@@ -229,7 +307,10 @@ function SmaranApp() {
       const stack = historyRef.current;
 
       if (stack[stack.length - 1] !== current) {
-        historyRef.current = [...stack, current];
+        historyRef.current = [
+          ...stack,
+          current,
+        ];
       }
 
       setCurrentScreen(next);
@@ -237,20 +318,29 @@ function SmaranApp() {
     [setCurrentScreen],
   );
 
+  /* ------------------------------------------------------------------------ */
+  /* Android hardware back button                                            */
+  /* ------------------------------------------------------------------------ */
+
   useEffect(() => {
     if (Platform.OS !== 'android') {
       return undefined;
     }
 
-    const subscription = BackHandler.addEventListener(
-      'hardwareBackPress',
-      goBack,
-    );
+    const subscription =
+      BackHandler.addEventListener(
+        'hardwareBackPress',
+        goBack,
+      );
 
-    return () => subscription.remove();
+    return () =>
+      subscription.remove();
   }, [goBack]);
 
-  // Restore the user's local Smaran data before the splash finishes.
+  /* ------------------------------------------------------------------------ */
+  /* Application boot                                                         */
+  /* ------------------------------------------------------------------------ */
+
   useEffect(() => {
     let mounted = true;
 
@@ -275,46 +365,76 @@ function SmaranApp() {
         }
 
         const nextProfile = savedProfile
-          ? {...DEFAULT_PROFILE, ...savedProfile}
+          ? {
+              ...DEFAULT_PROFILE,
+              ...savedProfile,
+            }
           : DEFAULT_PROFILE;
 
         setProfile(nextProfile);
+
         setLanguage(
-          SUPPORTED_LANGUAGES.includes(nextProfile.language)
+          SUPPORTED_LANGUAGES.includes(
+            nextProfile.language,
+          )
             ? nextProfile.language
             : 'English',
         );
-        setMode(nextProfile.mode === 'caregiver' ? 'caregiver' : 'patient');
+
+        setMode(
+          nextProfile.mode === 'caregiver'
+            ? 'caregiver'
+            : 'patient',
+        );
+
         setReminders(
           savedReminders.length
             ? normalizeReminders(savedReminders)
             : DEFAULT_REMINDERS,
         );
+
         setPeople(
-          savedPeople.map(normalizePerson).filter(item => item.name),
+          savedPeople
+            .map(normalizePerson)
+            .filter(item => item.name),
         );
-        setMemories(normalizeAlbums(savedMemories));
+
+        setMemories(
+          normalizeAlbums(savedMemories),
+        );
 
         initializedRef.current = true;
 
         if (biometricEnabled) {
           setBiometricBusy(true);
 
-          const result = await authenticateBiometric('Unlock Smaran');
+          const result =
+            await authenticateBiometric(
+              'Unlock Smaran',
+            );
 
           if (!mounted) {
             return;
           }
 
           setBiometricBusy(false);
-          bootTargetRef.current = result.success ? 'home' : 'login';
+
+          bootTargetRef.current =
+            result.success
+              ? 'home'
+              : 'login';
         }
       } catch (error) {
-        console.log('Smaran startup error:', error);
+        console.log(
+          'Smaran startup error:',
+          error,
+        );
 
         if (mounted) {
           initializedRef.current = true;
-          bootTargetRef.current = 'login';
+
+          bootTargetRef.current =
+            'login';
         }
       } finally {
         if (mounted) {
@@ -330,17 +450,35 @@ function SmaranApp() {
     };
   }, []);
 
-  // The cultural splash lasts exactly 5 seconds.
+  /* ------------------------------------------------------------------------ */
+  /* Splash completion                                                        */
+  /* ------------------------------------------------------------------------ */
+
   useEffect(() => {
-    if (!splashFinished || booting || biometricBusy) {
+    if (
+      !splashFinished ||
+      booting ||
+      biometricBusy
+    ) {
       return;
     }
 
     historyRef.current = [];
-    setCurrentScreen(bootTargetRef.current || 'login');
-  }, [splashFinished, booting, biometricBusy, setCurrentScreen]);
 
-  // Persist the same local data that the rest of Smaran already uses.
+    setCurrentScreen(
+      bootTargetRef.current || 'login',
+    );
+  }, [
+    splashFinished,
+    booting,
+    biometricBusy,
+    setCurrentScreen,
+  ]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Persistence                                                              */
+  /* ------------------------------------------------------------------------ */
+
   useEffect(() => {
     if (initializedRef.current) {
       saveProfile(profile);
@@ -365,9 +503,10 @@ function SmaranApp() {
     }
   }, [memories]);
 
-  // C + D + E:
-  // Whenever the locally stored reminder list changes, mirror it into the
-  // native Android AlarmManager. No network is involved.
+  /* ------------------------------------------------------------------------ */
+  /* Native Android alarm synchronization                                    */
+  /* ------------------------------------------------------------------------ */
+
   useEffect(() => {
     if (
       !initializedRef.current ||
@@ -377,10 +516,22 @@ function SmaranApp() {
       return;
     }
 
-    SmaranAlarm.syncReminders(reminders).catch(error =>
-      console.log('Smaran native alarm sync error:', error),
+    SmaranAlarm.syncReminders(
+      reminders,
+    ).catch(error =>
+      console.log(
+        'Smaran native alarm sync error:',
+        error,
+      ),
     );
-  }, [reminders, profile.patientName]);
+  }, [
+    reminders,
+    profile.patientName,
+  ]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Login                                                                    */
+  /* ------------------------------------------------------------------------ */
 
   const login = name => {
     loggingOutRef.current = false;
@@ -393,8 +544,13 @@ function SmaranApp() {
     }
 
     historyRef.current = ['login'];
+
     setCurrentScreen('onboarding');
   };
+
+  /* ------------------------------------------------------------------------ */
+  /* Signup                                                                   */
+  /* ------------------------------------------------------------------------ */
 
   const completeSignup = signupProfile => {
     const next = {
@@ -404,14 +560,20 @@ function SmaranApp() {
     };
 
     next.physicianName =
-      next.physicianName || signupProfile?.doctorName || '';
+      next.physicianName ||
+      signupProfile?.doctorName ||
+      '';
 
     next.physicianMobile = String(
-      next.physicianMobile || signupProfile?.doctorPhone || '',
+      next.physicianMobile ||
+        signupProfile?.doctorPhone ||
+        '',
     ).replace(/\D/g, '');
 
     next.physicianCountryCode =
-      next.physicianCountryCode || signupProfile?.doctorCountryCode || '+91';
+      next.physicianCountryCode ||
+      signupProfile?.doctorCountryCode ||
+      '+91';
 
     next.caregiverMobile = String(
       next.caregiverMobile ||
@@ -420,23 +582,38 @@ function SmaranApp() {
         '',
     ).replace(/\D/g, '');
 
-    next.patientAge = signupProfile?.age || next.patientAge || '';
+    next.patientAge =
+      signupProfile?.age ||
+      next.patientAge ||
+      '';
 
-    next.language = SUPPORTED_LANGUAGES.includes(signupProfile?.language)
-      ? signupProfile.language
-      : language || 'English';
+    next.language =
+      SUPPORTED_LANGUAGES.includes(
+        signupProfile?.language,
+      )
+        ? signupProfile.language
+        : language || 'English';
 
     next.mode = 'patient';
-    next.emergencyContacts = Array.isArray(signupProfile?.emergencyContacts)
-      ? signupProfile.emergencyContacts
-      : [];
+
+    next.emergencyContacts =
+      Array.isArray(
+        signupProfile?.emergencyContacts,
+      )
+        ? signupProfile.emergencyContacts
+        : [];
 
     setProfile(next);
+
     setLanguage(next.language);
+
     setMode('patient');
 
     saveProfile(next).catch(error =>
-      console.log('Initial profile save error:', error),
+      console.log(
+        'Initial profile save error:',
+        error,
+      ),
     );
 
     setPeople(previous => {
@@ -444,7 +621,9 @@ function SmaranApp() {
         item =>
           !item.isCaregiver &&
           !item.isPhysician &&
-          !String(item.id).startsWith('emergency-'),
+          !String(item.id).startsWith(
+            'emergency-',
+          ),
       );
 
       const caregiver = next.caregiverName
@@ -452,11 +631,14 @@ function SmaranApp() {
             id: 'caregiver',
             name: next.caregiverName,
             role: 'Caregiver',
-            countryCode: next.caregiverCountryCode,
-            phone: next.caregiverMobile,
-            status: next.caregiverMobile
-              ? 'Available to call'
-              : 'Add mobile number',
+            countryCode:
+              next.caregiverCountryCode,
+            phone:
+              next.caregiverMobile,
+            status:
+              next.caregiverMobile
+                ? 'Available to call'
+                : 'Add mobile number',
             isCaregiver: true,
           })
         : null;
@@ -466,24 +648,46 @@ function SmaranApp() {
             id: 'physician',
             name: next.physicianName,
             role: 'Physician',
-            countryCode: next.physicianCountryCode,
-            phone: next.physicianMobile,
-            status: next.physicianMobile
-              ? 'Available to call'
-              : 'Add mobile number',
+            countryCode:
+              next.physicianCountryCode,
+            phone:
+              next.physicianMobile,
+            status:
+              next.physicianMobile
+                ? 'Available to call'
+                : 'Add mobile number',
             isPhysician: true,
           })
         : null;
 
-      return [caregiver, physician, ...manual].filter(Boolean);
+      return [
+        caregiver,
+        physician,
+        ...manual,
+      ].filter(Boolean);
     });
 
-    historyRef.current = ['login', 'signup'];
-    setCurrentScreen('biometricSetup');
+    historyRef.current = [
+      'login',
+      'signup',
+    ];
+
+    setCurrentScreen(
+      'biometricSetup',
+    );
   };
 
+  /* ------------------------------------------------------------------------ */
+  /* Biometric                                                                */
+  /* ------------------------------------------------------------------------ */
+
   const biometricEnabled = () => {
-    historyRef.current = ['login', 'signup', 'biometricSetup'];
+    historyRef.current = [
+      'login',
+      'signup',
+      'biometricSetup',
+    ];
+
     setCurrentScreen('onboarding');
   };
 
@@ -492,184 +696,346 @@ function SmaranApp() {
       'Biometric setup required',
       'Please complete fingerprint or biometric authentication to continue using Smaran.',
     );
-    setCurrentScreen('biometricSetup');
+
+    setCurrentScreen(
+      'biometricSetup',
+    );
   };
 
-  const updateReminders = useCallback(updater => {
-    setReminders(previous =>
-      normalizeReminders(
-        typeof updater === 'function' ? updater(previous) : updater,
-      ),
-    );
-  }, []);
+  /* ------------------------------------------------------------------------ */
+  /* Reminder state                                                           */
+  /* ------------------------------------------------------------------------ */
 
-  const toggleReminder = useCallback(id => {
-    setReminders(previous =>
-      previous.map(item =>
-        item.id === id ? {...item, done: !item.done} : item,
-      ),
-    );
-  }, []);
+  const updateReminders = useCallback(
+    updater => {
+      setReminders(previous =>
+        normalizeReminders(
+          typeof updater === 'function'
+            ? updater(previous)
+            : updater,
+        ),
+      );
+    },
+    [],
+  );
 
-  const deleteReminder = useCallback(async id => {
-    await Promise.all([
-      cancelLegacyReminder(id),
-      SmaranAlarm.cancelReminder(id),
-    ]);
+  const toggleReminder = useCallback(
+    id => {
+      setReminders(previous =>
+        previous.map(item =>
+          item.id === id
+            ? {
+                ...item,
+                done: !item.done,
+              }
+            : item,
+        ),
+      );
+    },
+    [],
+  );
 
-    setReminders(previous => previous.filter(item => item.id !== id));
-  }, []);
+  const deleteReminder =
+    useCallback(async id => {
+      await Promise.all([
+        cancelLegacyReminder(id),
+        SmaranAlarm.cancelReminder(id),
+      ]);
+
+      setReminders(previous =>
+        previous.filter(
+          item => item.id !== id,
+        ),
+      );
+    }, []);
+
+  /* ------------------------------------------------------------------------ */
+  /* Language                                                                 */
+  /* ------------------------------------------------------------------------ */
 
   const changeLanguage = nextLanguage => {
-    if (!SUPPORTED_LANGUAGES.includes(nextLanguage)) {
+    if (
+      !SUPPORTED_LANGUAGES.includes(
+        nextLanguage,
+      )
+    ) {
       return;
     }
 
     setLanguage(nextLanguage);
-    setProfile(previous => ({...previous, language: nextLanguage}));
+
+    setProfile(previous => ({
+      ...previous,
+      language: nextLanguage,
+    }));
   };
+
+  /* ------------------------------------------------------------------------ */
+  /* Talk                                                                     */
+  /* ------------------------------------------------------------------------ */
 
   const openTalk = useCallback(() => {
     navigate('talk');
   }, [navigate]);
 
-  const capturePhoto = useCallback(async () => {
-    try {
-      const result = await launchCamera({
-        mediaType: 'photo',
-        cameraType: 'back',
-        saveToPhotos: true,
-        includeBase64: false,
-      });
+  /* ------------------------------------------------------------------------ */
+  /* Camera / memories                                                        */
+  /* ------------------------------------------------------------------------ */
 
-      if (result?.didCancel) {
-        return;
-      }
+  const capturePhoto = useCallback(
+    async () => {
+      try {
+        const result = await launchCamera({
+          mediaType: 'photo',
+          cameraType: 'back',
+          saveToPhotos: true,
+          includeBase64: false,
+        });
 
-      if (result?.errorCode) {
-        Alert.alert(
-          'Camera unavailable',
-          result.errorMessage || 'Unable to open the camera.',
-        );
-        return;
-      }
-
-      const uri = result?.assets?.[0]?.uri;
-      if (!uri) {
-        return;
-      }
-
-      setMemories(previous => {
-        const nextImage = {uri};
-
-        if (!previous.length) {
-          return [
-            {
-              id: `album-${Date.now()}`,
-              title: 'Family Memories',
-              description: 'A cherished collection',
-              collection: 'family',
-              images: [nextImage],
-            },
-          ];
+        if (result?.didCancel) {
+          return;
         }
 
-        return previous.map((album, index) =>
-          index === 0
-            ? {...album, images: [...(album.images || []), nextImage]}
-            : album,
-        );
-      });
+        if (result?.errorCode) {
+          Alert.alert(
+            'Camera unavailable',
+            result.errorMessage ||
+              'Unable to open the camera.',
+          );
 
-      Alert.alert('Photo saved', 'Your photo was added to Family Memories.');
-      navigate('photos');
-    } catch (error) {
-      console.log('Camera error:', error);
-      Alert.alert(
-        'Camera unavailable',
-        'Please make sure Smaran has camera permission.',
-      );
-    }
-  }, [navigate]);
+          return;
+        }
+
+        const uri =
+          result?.assets?.[0]?.uri;
+
+        if (!uri) {
+          return;
+        }
+
+        setMemories(previous => {
+          const nextImage = {uri};
+
+          if (!previous.length) {
+            return [
+              {
+                id: `album-${Date.now()}`,
+                title: 'Family Memories',
+                description:
+                  'A cherished collection',
+                collection: 'family',
+                images: [nextImage],
+              },
+            ];
+          }
+
+          return previous.map(
+            (album, index) =>
+              index === 0
+                ? {
+                    ...album,
+                    images: [
+                      ...(album.images || []),
+                      nextImage,
+                    ],
+                  }
+                : album,
+          );
+        });
+
+        Alert.alert(
+          'Photo saved',
+          'Your photo was added to Family Memories.',
+        );
+
+        navigate('photos');
+      } catch (error) {
+        console.log(
+          'Camera error:',
+          error,
+        );
+
+        Alert.alert(
+          'Camera unavailable',
+          'Please make sure Smaran has camera permission.',
+        );
+      }
+    },
+    [navigate],
+  );
+
+  /* ------------------------------------------------------------------------ */
+  /* Mode                                                                     */
+  /* ------------------------------------------------------------------------ */
 
   const changeMode = nextMode => {
-    if (nextMode !== 'patient' && nextMode !== 'caregiver') {
+    if (
+      nextMode !== 'patient' &&
+      nextMode !== 'caregiver'
+    ) {
       return;
     }
 
     setMode(nextMode);
-    setProfile(previous => ({...previous, mode: nextMode}));
+
+    setProfile(previous => ({
+      ...previous,
+      mode: nextMode,
+    }));
   };
 
+  /* ------------------------------------------------------------------------ */
+  /* Profile                                                                  */
+  /* ------------------------------------------------------------------------ */
+
   const updateProfile = async updates => {
-    const next = {...profile, ...updates};
+    const next = {
+      ...profile,
+      ...updates,
+    };
+
     setProfile(next);
+
     await saveProfile(next);
   };
 
+  /* ------------------------------------------------------------------------ */
+  /* People                                                                   */
+  /* ------------------------------------------------------------------------ */
+
   const updatePeople = updater => {
     setPeople(previous => {
-      const next = typeof updater === 'function' ? updater(previous) : updater;
+      const next =
+        typeof updater === 'function'
+          ? updater(previous)
+          : updater;
 
-      return (Array.isArray(next) ? next : [])
+      return (
+        Array.isArray(next)
+          ? next
+          : []
+      )
         .map(normalizePerson)
-        .filter(item => item.name && !item.isCaregiver && !item.isPhysician);
+        .filter(
+          item =>
+            item.name &&
+            !item.isCaregiver &&
+            !item.isPhysician,
+        );
     });
   };
 
-  const updateEmergencyContacts = contacts => {
-    const safe = Array.isArray(contacts) ? contacts : [];
-    setProfile(previous => ({...previous, emergencyContacts: safe}));
-  };
+  /* ------------------------------------------------------------------------ */
+  /* Emergency contacts                                                       */
+  /* ------------------------------------------------------------------------ */
+
+  const updateEmergencyContacts =
+    contacts => {
+      const safe = Array.isArray(
+        contacts,
+      )
+        ? contacts
+        : [];
+
+      setProfile(previous => ({
+        ...previous,
+        emergencyContacts: safe,
+      }));
+    };
+
+  /* ------------------------------------------------------------------------ */
+  /* Logout                                                                   */
+  /* ------------------------------------------------------------------------ */
 
   const logout = async () => {
     loggingOutRef.current = true;
+
     setBiometricBusy(true);
 
     try {
       await disableBiometric();
+
       await SmaranAlarm.cancelAllReminders();
+
       await clearAllStorage();
 
-      const scheduled = await getScheduledReminders();
+      const scheduled =
+        await getScheduledReminders();
+
       await Promise.all(
         scheduled.map(item =>
-          cancelLegacyReminder(item?.notification?.id),
+          cancelLegacyReminder(
+            item?.notification?.id,
+          ),
         ),
       );
     } catch (error) {
-      console.log('Logout cleanup error:', error);
+      console.log(
+        'Logout cleanup error:',
+        error,
+      );
     } finally {
       setProfile(DEFAULT_PROFILE);
+
       setLanguage('English');
+
       setMode('patient');
-      setReminders(DEFAULT_REMINDERS);
+
+      setReminders(
+        DEFAULT_REMINDERS,
+      );
+
       setPeople([]);
+
       setMemories([]);
+
       historyRef.current = [];
+
       setBiometricBusy(false);
+
       setCurrentScreen('login');
     }
   };
 
+  /* ------------------------------------------------------------------------ */
+  /* Splash                                                                   */
+  /* ------------------------------------------------------------------------ */
+
   if (screen === 'splash') {
-    return <SplashScreen onFinished={() => setSplashFinished(true)} />;
+    return (
+      <SplashScreen
+        onFinished={() =>
+          setSplashFinished(true)
+        }
+      />
+    );
   }
+
+  /* ------------------------------------------------------------------------ */
+  /* Boot / biometric loading                                                 */
+  /* ------------------------------------------------------------------------ */
 
   if (booting || biometricBusy) {
     return (
       <View style={styles.loadingRoot}>
         <StatusBar
           barStyle="dark-content"
-          backgroundColor={COLORS.background}
+          backgroundColor={
+            COLORS.background
+          }
           translucent={false}
         />
 
         <View style={styles.loadingCard}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator
+            size="large"
+            color={COLORS.primary}
+          />
 
           <Text style={styles.loadingTitle}>
-            {booting ? 'Checking secure access…' : 'Securing Smaran…'}
+            {booting
+              ? 'Checking secure access…'
+              : 'Securing Smaran…'}
           </Text>
 
           <Text style={styles.loadingText}>
@@ -682,6 +1048,10 @@ function SmaranApp() {
     );
   }
 
+  /* ------------------------------------------------------------------------ */
+  /* Main screen renderer                                                     */
+  /* ------------------------------------------------------------------------ */
+
   return (
     <View style={styles.root}>
       <StatusBar
@@ -690,16 +1060,28 @@ function SmaranApp() {
         translucent={false}
       />
 
+      {/* IMPORTANT:
+          Do NOT wrap the active screen in SmaranAnimated.
+          The screen must remain a direct child of the flex root so that
+          ScrollView/card measurements remain content-driven. */}
+
       {screen === 'login' && (
         <LoginScreen
           onLogin={login}
-          onSignup={() => navigate('signup')}
-          onForgot={() => navigate('forgot')}
+          onSignup={() =>
+            navigate('signup')
+          }
+          onForgot={() =>
+            navigate('forgot')
+          }
         />
       )}
 
       {screen === 'signup' && (
-        <SignupScreen onBack={goBack} onComplete={completeSignup} />
+        <SignupScreen
+          onBack={goBack}
+          onComplete={completeSignup}
+        />
       )}
 
       {screen === 'biometricSetup' && (
@@ -709,13 +1091,18 @@ function SmaranApp() {
         />
       )}
 
-      {screen === 'forgot' && <ForgotPasswordScreen onBack={goBack} />}
+      {screen === 'forgot' && (
+        <ForgotPasswordScreen
+          onBack={goBack}
+        />
+      )}
 
       {screen === 'onboarding' && (
         <OnboardingScreen
           onBack={goBack}
           onContinue={() => {
             historyRef.current = [];
+
             setCurrentScreen('home');
           }}
         />
@@ -724,12 +1111,18 @@ function SmaranApp() {
       {screen === 'home' && (
         <HomeScreen
           name={profile.caregiverName}
-          patientName={profile.patientName}
+          patientName={
+            profile.patientName
+          }
           reminders={reminders}
           onNavigate={navigate}
-          onToggleReminder={toggleReminder}
+          onToggleReminder={
+            toggleReminder
+          }
           onSendMessage={openTalk}
-          onCapturePhoto={capturePhoto}
+          onCapturePhoto={
+            capturePhoto
+          }
         />
       )}
 
@@ -737,36 +1130,59 @@ function SmaranApp() {
         <RemindersScreen
           onBack={goBack}
           reminders={reminders}
-          patientName={profile.patientName}
-          onRemindersChange={updateReminders}
+          patientName={
+            profile.patientName
+          }
+          onRemindersChange={
+            updateReminders
+          }
         />
       )}
 
       {screen === 'games' && (
         <GamesScreen
           onBack={goBack}
-          patientName={profile.patientName}
+          patientName={
+            profile.patientName
+          }
         />
       )}
 
       {screen === 'talk' && (
         <SmaranAIReminderScreen
-          patientName={profile.patientName}
-          name={profile.caregiverName}
+          patientName={
+            profile.patientName
+          }
+          name={
+            profile.caregiverName
+          }
           reminders={reminders}
           onNavigate={navigate}
         />
       )}
 
-      {screen === 'music' && <MusicScreen onBack={goBack} />}
-      {screen === 'relax' && <RelaxScreen onBack={goBack} />}
+      {screen === 'music' && (
+        <MusicScreen
+          onBack={goBack}
+        />
+      )}
+
+      {screen === 'relax' && (
+        <RelaxScreen
+          onBack={goBack}
+        />
+      )}
 
       {screen === 'photos' && (
         <PhotosScreen
           onBack={goBack}
           albums={memories}
-          onAlbumsChange={setMemories}
-          onMemoryCountChange={() => {}}
+          onAlbumsChange={
+            setMemories
+          }
+          onMemoryCountChange={
+            () => {}
+          }
         />
       )}
 
@@ -774,15 +1190,33 @@ function SmaranApp() {
         <CircleScreen
           onBack={goBack}
           people={people}
-          onPeopleChange={updatePeople}
-          caregiverName={profile.caregiverName}
-          caregiverMobile={profile.caregiverMobile}
-          caregiverCountryCode={profile.caregiverCountryCode}
-          emergencyContacts={profile.emergencyContacts}
-          physicianName={profile.physicianName}
-          physicianMobile={profile.physicianMobile}
-          physicianCountryCode={profile.physicianCountryCode}
-          onEmergencyContactsChange={updateEmergencyContacts}
+          onPeopleChange={
+            updatePeople
+          }
+          caregiverName={
+            profile.caregiverName
+          }
+          caregiverMobile={
+            profile.caregiverMobile
+          }
+          caregiverCountryCode={
+            profile.caregiverCountryCode
+          }
+          emergencyContacts={
+            profile.emergencyContacts
+          }
+          physicianName={
+            profile.physicianName
+          }
+          physicianMobile={
+            profile.physicianMobile
+          }
+          physicianCountryCode={
+            profile.physicianCountryCode
+          }
+          onEmergencyContactsChange={
+            updateEmergencyContacts
+          }
         />
       )}
 
@@ -790,18 +1224,41 @@ function SmaranApp() {
         <ProfileScreen
           onBack={goBack}
           onLogout={logout}
-          onSaveProfile={updateProfile}
-          patientName={profile.patientName}
-          caregiverName={profile.caregiverName}
-          caregiverMobile={profile.caregiverMobile}
-          physicianName={profile.physicianName}
-          physicianMobile={profile.physicianMobile}
-          physicianCountryCode={profile.physicianCountryCode}
+          onSaveProfile={
+            updateProfile
+          }
+          patientName={
+            profile.patientName
+          }
+          caregiverName={
+            profile.caregiverName
+          }
+          caregiverMobile={
+            profile.caregiverMobile
+          }
+          physicianName={
+            profile.physicianName
+          }
+          physicianMobile={
+            profile.physicianMobile
+          }
+          physicianCountryCode={
+            profile.physicianCountryCode
+          }
           language={language}
-          setLanguage={changeLanguage}
-          guardianMode={mode === 'caregiver'}
-          setGuardianMode={enabled =>
-            changeMode(enabled ? 'caregiver' : 'patient')
+          setLanguage={
+            changeLanguage
+          }
+          guardianMode={
+            mode === 'caregiver'
+          }
+          setGuardianMode={
+            enabled =>
+              changeMode(
+                enabled
+                  ? 'caregiver'
+                  : 'patient',
+              )
           }
         />
       )}
@@ -809,41 +1266,58 @@ function SmaranApp() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Styles                                                                     */
+/* -------------------------------------------------------------------------- */
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor:
+      COLORS.background,
   },
+
   root: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor:
+      COLORS.background,
   },
+
   loadingRoot: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor:
+      COLORS.background,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
+
   loadingCard: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: COLORS.white,
+    backgroundColor:
+      COLORS.white,
     borderRadius: 24,
     padding: 28,
     alignItems: 'center',
+
     shadowColor: '#7A694E',
-    shadowOffset: {width: 0, height: 3},
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 3,
   },
+
   loadingTitle: {
     marginTop: 18,
     fontSize: 18,
     color: COLORS.text,
     fontWeight: '900',
   },
+
   loadingText: {
     marginTop: 8,
     textAlign: 'center',
