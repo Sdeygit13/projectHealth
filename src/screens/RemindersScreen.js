@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -20,6 +21,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import Header from '../components/Header';
+import Icon from '../components/Icon';
 
 import {
   COLORS,
@@ -258,7 +260,7 @@ export default function RemindersScreen({
   /* Notification synchronization                                             */
   /* ------------------------------------------------------------------------ */
 
-  const syncNotifications =
+  const syncNotifications = useCallback(
     async nextReminders => {
       try {
         await prepareNotifications();
@@ -311,7 +313,9 @@ export default function RemindersScreen({
 
         return false;
       }
-    };
+    },
+    [patientName],
+  );
 
   /* ------------------------------------------------------------------------ */
   /* Initial notification sync                                                */
@@ -325,7 +329,7 @@ export default function RemindersScreen({
     syncNotifications(
       safeReminders,
     );
-  }, []);
+  }, [safeReminders, syncNotifications]);
 
   /* ------------------------------------------------------------------------ */
   /* Toggle reminder                                                          */
@@ -630,9 +634,12 @@ export default function RemindersScreen({
             }
             accessibilityRole="button"
             accessibilityLabel="Open reminder notifications">
-            <Text style={styles.bell}>
-              🔔
-            </Text>
+            <Icon
+              name="bell"
+              size={29}
+              color={COLORS.primaryDark}
+              strokeWidth={2.2}
+            />
 
             {notifications.length >
             0 ? (
@@ -814,12 +821,9 @@ export default function RemindersScreen({
                       style={
                         styles.iconText
                       }>
-                      {item.icon ||
-                        item.title
-                          ?.charAt(
-                            0,
-                          )
-                          ?.toUpperCase() ||
+                      {item.title
+                        ?.charAt(0)
+                        ?.toUpperCase() ||
                         'R'}
                     </Text>
                   </View>
@@ -852,40 +856,56 @@ export default function RemindersScreen({
                     </Text>
                   </View>
 
-                  <View
+                </SmaranPressable>
+
+                <View style={styles.cardActions}>
+                  <SmaranPressable
+                    onPress={() =>
+                      toggle(item.id)
+                    }
                     style={[
                       styles.check,
                       item.done &&
                         styles.checkDone,
-                    ]}>
-                    <Text
-                      style={
-                        styles.checkText
-                      }>
-                      {item.done
-                        ? '✓'
-                        : ''}
-                    </Text>
-                  </View>
-                </SmaranPressable>
+                    ]}
+                    hitSlop={8}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{
+                      checked: item.done,
+                    }}
+                    accessibilityLabel={`${
+                      item.done
+                        ? 'Unselect'
+                        : 'Select'
+                    } ${item.title}`}>
+                    {item.done ? (
+                      <Icon
+                        name="check"
+                        size={17}
+                        color={COLORS.white}
+                        strokeWidth={2.8}
+                      />
+                    ) : null}
+                  </SmaranPressable>
 
-                <SmaranPressable
-                  onPress={() =>
-                    openEdit(item)
-                  }
-                  style={
-                    styles.editButton
-                  }
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Edit ${item.title}`}>
-                  <Text
+                  <SmaranPressable
+                    onPress={() =>
+                      openEdit(item)
+                    }
                     style={
-                      styles.editIcon
-                    }>
-                    ✎
-                  </Text>
-                </SmaranPressable>
+                      styles.editButton
+                    }
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit ${item.title}`}>
+                    <Icon
+                      name="pencil"
+                      size={18}
+                      color={COLORS.primaryDark}
+                      strokeWidth={2.1}
+                    />
+                  </SmaranPressable>
+                </View>
               </View>
             ),
           )
@@ -1558,9 +1578,13 @@ const styles = StyleSheet.create({
 
     alignSelf: 'flex-start',
 
+    position: 'relative',
+
     flexGrow: 0,
 
     flexShrink: 0,
+
+    minHeight: 74,
 
     backgroundColor:
       COLORS.white,
@@ -1579,7 +1603,13 @@ const styles = StyleSheet.create({
   },
 
   cardMain: {
-    flex: 1,
+    flexGrow: 1,
+
+    flexShrink: 1,
+
+    alignSelf: 'center',
+
+    paddingRight: 78,
 
     flexDirection: 'row',
 
@@ -1595,6 +1625,7 @@ const styles = StyleSheet.create({
   icon: {
     width: 48,
     height: 48,
+    flexShrink: 0,
 
     borderRadius: 16,
 
@@ -1614,7 +1645,10 @@ const styles = StyleSheet.create({
   },
 
   cardText: {
-    flex: 1,
+    flexGrow: 1,
+
+    flexShrink: 1,
+
     minWidth: 0,
   },
 
@@ -1647,6 +1681,7 @@ const styles = StyleSheet.create({
   check: {
     width: 27,
     height: 27,
+    flexShrink: 0,
 
     borderRadius: 14,
 
@@ -1658,7 +1693,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
 
-    marginLeft: 8,
   },
 
   checkDone: {
@@ -1674,6 +1708,7 @@ const styles = StyleSheet.create({
   editButton: {
     width: 36,
     height: 36,
+    flexShrink: 0,
 
     borderRadius: 18,
 
@@ -1683,7 +1718,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
 
-    marginLeft: 8,
+  },
+
+  cardActions: {
+    position: 'absolute',
+    top: 13,
+    right: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   editIcon: {
@@ -1744,12 +1786,6 @@ const styles = StyleSheet.create({
 
     alignItems: 'center',
     justifyContent: 'center',
-  },
-
-  bell: {
-    fontSize: 22,
-    color: COLORS.primaryDark,
-    fontWeight: '900',
   },
 
   badge: {

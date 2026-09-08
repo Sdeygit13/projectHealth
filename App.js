@@ -27,6 +27,7 @@ import MusicScreen from './src/screens/MusicScreen';
 import RelaxScreen from './src/screens/RelaxScreen';
 import BiometricSetupScreen from './src/screens/BiometricSetupScreen';
 import SplashScreen from './src/screens/SplashScreen';
+import BottomNav from './src/components/BottomNav';
 
 import {COLORS} from './src/theme';
 
@@ -1065,7 +1066,8 @@ function SmaranApp() {
           The screen must remain a direct child of the flex root so that
           ScrollView/card measurements remain content-driven. */}
 
-      {screen === 'login' && (
+      <View style={styles.screenArea}>
+        {screen === 'login' && (
         <LoginScreen
           onLogin={login}
           onSignup={() =>
@@ -1220,7 +1222,7 @@ function SmaranApp() {
         />
       )}
 
-      {screen === 'profile' && (
+        {screen === 'profile' && (
         <ProfileScreen
           onBack={goBack}
           onLogout={logout}
@@ -1261,7 +1263,19 @@ function SmaranApp() {
               )
           }
         />
-      )}
+        )}
+      </View>
+
+      {ROOT_SCREENS.includes(screen) ? (
+        <BottomNav
+          active={
+            ['circle', 'photos', 'music', 'relax'].includes(screen)
+              ? screen
+              : 'home'
+          }
+          onNavigate={navigate}
+        />
+      ) : null}
     </View>
   );
 }
@@ -1281,6 +1295,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor:
       COLORS.background,
+  },
+
+  screenArea: {
+    flex: 1,
+    minHeight: 0,
   },
 
   loadingRoot: {

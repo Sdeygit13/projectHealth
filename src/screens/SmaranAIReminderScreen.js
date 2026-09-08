@@ -12,7 +12,6 @@ import {
 
 import Tts from 'react-native-tts';
 
-import BottomNav from '../components/BottomNav';
 import Icon from '../components/Icon';
 
 import { COLORS, SHADOW } from '../theme';
@@ -638,10 +637,6 @@ const SmaranAIReminderScreen = ({
         </Pressable>
       </ScrollView>
 
-      <BottomNav
-        active="home"
-        onNavigate={onNavigate}
-      />
     </View>
   );
 };

@@ -9,10 +9,12 @@ import {
   View,
 } from 'react-native';
 
-import BottomNav from '../components/BottomNav';
 import Icon from '../components/Icon';
 import {COLORS, SHADOW} from '../theme';
-import {SmaranAnimated, SmaranPressable} from '../components/SmaranMotion';
+import {
+  SmaranAnimated,
+  SmaranPressable,
+} from '../components/SmaranMotion';
 
 const HOME_BACKGROUND = '#FEF7E8';
 
@@ -107,7 +109,7 @@ export default function HomeScreen({
   const [message, setMessage] = useState('');
   const [isListening, setIsListening] = useState(false);
 
-  /* Keep the greeting/date fresh without requiring a screen reload. */
+  /* Keep greeting/date fresh without requiring a screen reload. */
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(new Date());
@@ -179,11 +181,6 @@ export default function HomeScreen({
   };
 
   const handleFeaturePress = item => {
-    if (item.key === 'garden') {
-      onNavigate?.(item.route);
-      return;
-    }
-
     onNavigate?.(item.route);
   };
 
@@ -200,57 +197,69 @@ export default function HomeScreen({
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
-        
+
         {/* ================================================================ */}
         {/* GREETING                                                         */}
         {/* ================================================================ */}
 
-        <SmaranAnimated delay={40} duration={650} distance={14} style={styles.motionHeader}>
+        <SmaranAnimated
+          delay={40}
+          duration={650}
+          distance={14}
+          style={styles.motionHeader}>
+
           <View style={styles.header}>
-          <View style={styles.headerCopy}>
-            <Text style={styles.hello}>Hello,</Text>
+            <View style={styles.headerCopy}>
+              <Text style={styles.hello}>Hello,</Text>
 
-            <Text
-              style={styles.patientName}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.72}>
-              {patientFirstName}
-            </Text>
+              <Text
+                style={styles.patientName}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.72}>
+                {patientFirstName}
+              </Text>
 
-            <View style={styles.greetingRow}>
-              <Text style={styles.greeting}>{greeting}</Text>
+              <View style={styles.greetingRow}>
+                <Text style={styles.greeting}>
+                  {greeting}
+                </Text>
 
-              <Text style={styles.greetingIcon}>
-                {daytime ? '☀️' : '🌙'}
+                <Text style={styles.greetingIcon}>
+                  {daytime ? '☀️' : '🌙'}
+                </Text>
+              </View>
+
+              <Text style={styles.date}>
+                {formatDate(now)}
               </Text>
             </View>
 
-            <Text style={styles.date}>{formatDate(now)}</Text>
-          </View>
+            {/* Reminder notification button */}
+            <SmaranPressable
+              onPress={() => onNavigate?.('reminders')}
+              style={({pressed}) => [
+                styles.reminderButton,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Open reminders">
 
-          {/* Reminder notification button */}
-          <SmaranPressable
-            onPress={() => onNavigate?.('reminders')}
-            style={({pressed}) => [
-              styles.reminderButton,
-              pressed && styles.pressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={`Open reminders. ${pendingReminderCount} pending reminders.`}>
-            
-            <Text style={styles.reminderEmoji}>
-              {daytime ? '☀️' : '🌙'}
-            </Text>
+              <Icon
+                name="bell"
+                size={29}
+                color={COLORS.primaryDark}
+                strokeWidth={2.2}
+              />
 
-            {pendingReminderCount > 0 ? (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  {Math.min(pendingReminderCount, 9)}
-                </Text>
-              </View>
-            ) : null}
-          </SmaranPressable>
+              {pendingReminderCount > 0 ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {Math.min(pendingReminderCount, 9)}
+                  </Text>
+                </View>
+              ) : null}
+            </SmaranPressable>
           </View>
         </SmaranAnimated>
 
@@ -276,73 +285,89 @@ export default function HomeScreen({
         {/* DAILY PROGRESS                                                    */}
         {/* ================================================================ */}
 
-        <SmaranAnimated delay={570} duration={560} distance={18} style={styles.fullMotion}>
-        <SmaranPressable
-          onPress={() => onNavigate?.('games')}
-          style={({pressed}) => [
-            styles.progressBanner,
-            pressed && styles.pressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Open today's memory game progress">
-          
-          <View style={styles.progressIcon}>
-            <Icon
-              name="heart"
-              size={27}
-              color={COLORS.primaryDark}
-              strokeWidth={2.05}
-            />
-          </View>
+        <SmaranAnimated
+          delay={570}
+          duration={560}
+          distance={18}
+          style={styles.fullMotion}>
 
-          <View style={styles.progressCopy}>
-            <Text style={styles.progressTitle}>
-              Great job! You completed {Math.min(completedTasks, 5)} of 5
-              games today.
+          <SmaranPressable
+            onPress={() => onNavigate?.('games')}
+            style={({pressed}) => [
+              styles.progressBanner,
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Open today's memory game progress">
+
+            <View style={styles.progressIcon}>
+              <Icon
+                name="heart"
+                size={27}
+                color={COLORS.primaryDark}
+                strokeWidth={2.05}
+              />
+            </View>
+
+            <View style={styles.progressCopy}>
+              <Text style={styles.progressTitle}>
+                Great job! You completed {Math.min(completedTasks, 5)} of 5
+                games today.
+              </Text>
+
+              <Text style={styles.progressSub}>
+                Keep your mind active with a little practice.
+              </Text>
+            </View>
+
+            <Text style={styles.arrow}>
+              ›
             </Text>
-
-            <Text style={styles.progressSub}>
-              Keep your mind active with a little practice.
-            </Text>
-          </View>
-
-          <Text style={styles.arrow}>›</Text>
-        </SmaranPressable>
+          </SmaranPressable>
         </SmaranAnimated>
 
         {/* ================================================================ */}
         {/* TODAY'S PLAN                                                      */}
         {/* ================================================================ */}
 
-        <SmaranAnimated delay={650} duration={500} distance={16} style={styles.fullMotion}>
-        <View style={styles.planHeader}>
-          <Text style={styles.planTitle}>Today's Plan</Text>
+        <SmaranAnimated
+          delay={650}
+          duration={500}
+          distance={16}
+          style={styles.fullMotion}>
 
-          <SmaranPressable
-            onPress={() => onNavigate?.('reminders')}
-            style={({pressed}) => [
-              styles.scheduleLink,
-              pressed && styles.linkPressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Open full schedule">
-            
-            <Icon
-              name="calendar-days"
-              size={18}
-              color={COLORS.primaryDark}
-              strokeWidth={2.05}
-            />
+          <View style={styles.planHeader}>
+            <Text style={styles.planTitle}>
+              Today's Plan
+            </Text>
 
-            <Text style={styles.scheduleText}>Full Schedule</Text>
-          </SmaranPressable>
-        </View>
+            <SmaranPressable
+              onPress={() => onNavigate?.('reminders')}
+              style={({pressed}) => [
+                styles.scheduleLink,
+                pressed && styles.linkPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Open full schedule">
+
+              <Icon
+                name="calendar-days"
+                size={18}
+                color={COLORS.primaryDark}
+                strokeWidth={2.05}
+              />
+
+              <Text style={styles.scheduleText}>
+                Full Schedule
+              </Text>
+            </SmaranPressable>
+          </View>
         </SmaranAnimated>
 
         {todayPlan.length > 0 ? (
           todayPlan.map((item, index) => (
             <PlanCard
-              key={item.id ?? `plan-${index}`}
+              key={item.id || 'plan-' + index}
               item={item}
               onToggle={() => onToggleReminder?.(item.id)}
               delay={720 + index * 100}
@@ -357,7 +382,7 @@ export default function HomeScreen({
             ]}
             accessibilityRole="button"
             accessibilityLabel="No reminders scheduled. Add a reminder.">
-            
+
             <View style={styles.emptyIcon}>
               <Icon
                 name="calendar-days"
@@ -377,7 +402,9 @@ export default function HomeScreen({
               </Text>
             </View>
 
-            <Text style={styles.arrow}>›</Text>
+            <Text style={styles.arrow}>
+              ›
+            </Text>
           </SmaranPressable>
         )}
 
@@ -385,137 +412,134 @@ export default function HomeScreen({
         {/* AI REMINDER / ASSISTANT                                           */}
         {/* ================================================================ */}
 
-        <SmaranAnimated delay={900} duration={600} distance={20} style={styles.fullMotion}>
-        <View style={styles.aiReminderSection}>
-          <View style={styles.aiReminderHeader}>
-            <View style={styles.aiReminderTitleRow}>
-              <View style={styles.aiTitleIcon}>
+        <SmaranAnimated
+          delay={900}
+          duration={600}
+          distance={20}
+          style={styles.fullMotion}>
+
+          <View style={styles.aiReminderSection}>
+            <View style={styles.aiReminderHeader}>
+              <View style={styles.aiReminderTitleRow}>
+                <View style={styles.aiTitleIcon}>
+                  <Icon
+                    name="bell"
+                    size={20}
+                    color={COLORS.primaryDark}
+                    strokeWidth={2}
+                  />
+                </View>
+
+                <View style={styles.aiReminderTitleCopy}>
+                  <Text style={styles.aiReminderTitle}>
+                    AI Reminder
+                  </Text>
+
+                  <Text style={styles.aiReminderSubtitle}>
+                    Ask Smaran about your schedule
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View
+              style={[
+                styles.composer,
+                isListening && styles.composerListening,
+              ]}>
+
+              <View style={styles.composerLeading}>
                 <Icon
-                  name="bell"
-                  size={20}
+                  name="message-circle"
+                  size={23}
+                  color={COLORS.primaryDark}
+                  strokeWidth={1.9}
+                />
+              </View>
+
+              <TextInput
+                value={message}
+                onChangeText={text => {
+                  setMessage(text);
+
+                  if (isListening) {
+                    setIsListening(false);
+                  }
+                }}
+                placeholder="Ask me about your reminders..."
+                placeholderTextColor={COLORS.muted}
+                style={styles.composerInput}
+                returnKeyType="send"
+                onSubmitEditing={submitMessage}
+                blurOnSubmit={false}
+                accessibilityLabel="Ask Smaran about your reminders"
+              />
+
+              {message.trim() ? (
+                <SmaranPressable
+                  onPress={submitMessage}
+                  style={({pressed}) => [
+                    styles.composerAction,
+                    styles.sendAction,
+                    pressed && styles.actionPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Send message">
+
+                  <Icon
+                    name="send"
+                    size={19}
+                    color={COLORS.primaryDark}
+                    strokeWidth={2.1}
+                  />
+                </SmaranPressable>
+              ) : (
+                <SmaranPressable
+                  onPress={handleMicrophone}
+                  style={({pressed}) => [
+                    styles.composerAction,
+                    styles.micAction,
+                    isListening && styles.micActionActive,
+                    pressed && styles.actionPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Talk to Smaran AI Reminder">
+
+                  <Icon
+                    name="mic"
+                    size={22}
+                    color={COLORS.primaryDark}
+                    strokeWidth={2.1}
+                  />
+                </SmaranPressable>
+              )}
+
+              <SmaranPressable
+                onPress={handleCamera}
+                style={({pressed}) => [
+                  styles.composerAction,
+                  styles.cameraAction,
+                  pressed && styles.actionPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Take a photo">
+
+                <Icon
+                  name="camera"
+                  size={21}
                   color={COLORS.primaryDark}
                   strokeWidth={2}
                 />
-              </View>
-
-              <View style={styles.aiReminderTitleCopy}>
-                <Text style={styles.aiReminderTitle}>
-                  AI Reminder
-                </Text>
-
-                <Text style={styles.aiReminderSubtitle}>
-                  Ask Smaran about your schedule
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View
-            style={[
-              styles.composer,
-              isListening && styles.composerListening,
-            ]}>
-            
-            <View style={styles.composerLeading}>
-              <Icon
-                name="message-circle"
-                size={23}
-                color={COLORS.primaryDark}
-                strokeWidth={1.9}
-              />
+              </SmaranPressable>
             </View>
 
-            <TextInput
-              value={message}
-              onChangeText={text => {
-                setMessage(text);
-                if (isListening) {
-                  setIsListening(false);
-                }
-              }}
-              placeholder="Ask me about your reminders..."
-              placeholderTextColor={COLORS.muted}
-              style={styles.composerInput}
-              returnKeyType="send"
-              onSubmitEditing={submitMessage}
-              blurOnSubmit={false}
-              accessibilityLabel="Ask Smaran about your reminders"
-            />
-
-            {message.trim() ? (
-              <SmaranPressable
-                onPress={submitMessage}
-                style={({pressed}) => [
-                  styles.composerAction,
-                  styles.sendAction,
-                  pressed && styles.actionPressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Send message">
-                
-                <Icon
-                  name="send"
-                  size={19}
-                  color={COLORS.primaryDark}
-                  strokeWidth={2.1}
-                />
-              </SmaranPressable>
-            ) : (
-              <SmaranPressable
-                onPress={handleMicrophone}
-                style={({pressed}) => [
-                  styles.composerAction,
-                  styles.micAction,
-                  isListening && styles.micActionActive,
-                  pressed && styles.actionPressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Talk to Smaran AI Reminder">
-                
-                <Icon
-                  name="mic"
-                  size={22}
-                  color={COLORS.primaryDark}
-                  strokeWidth={2.1}
-                />
-              </SmaranPressable>
-            )}
-
-            <SmaranPressable
-              onPress={handleCamera}
-              style={({pressed}) => [
-                styles.composerAction,
-                styles.cameraAction,
-                pressed && styles.actionPressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Take a photo">
-              
-              <Icon
-                name="camera"
-                size={21}
-                color={COLORS.primaryDark}
-                strokeWidth={2}
-              />
-            </SmaranPressable>
+            <Text style={styles.aiHint}>
+              Tap the microphone to talk to Smaran
+            </Text>
           </View>
-
-          <Text style={styles.aiHint}>
-            Tap the microphone to talk to Smaran
-          </Text>
-        </View>
         </SmaranAnimated>
-
       </ScrollView>
 
-      {/* ================================================================ */}
-      {/* BOTTOM NAVIGATION                                                 */}
-      {/* ================================================================ */}
-
-      <BottomNav
-        active="home"
-        onNavigate={onNavigate}
-      />
     </View>
   );
 }
@@ -533,45 +557,53 @@ function FeatureTile({
   delay = 160,
 }) {
   return (
-    <SmaranAnimated delay={delay} duration={560} distance={20} style={styles.featureMotion}>
-    <SmaranPressable
-      onPress={onPress}
-      style={({pressed}) => [
-        styles.featureTile,
-        pressed && styles.pressed,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${subtitle}`}>
-      
-      <View
-        style={[
-          styles.featureIcon,
-          {
-            backgroundColor: background,
-          },
-        ]}>
-        <Icon
-          name={icon}
-          size={24}
-          color={COLORS.primaryDark}
-          strokeWidth={2.05}
-        />
-      </View>
+    <SmaranAnimated
+      delay={delay}
+      duration={560}
+      distance={20}
+      style={styles.featureMotion}>
 
-      <Text
-        style={styles.featureTitle}
-        numberOfLines={2}>
-        {title}
-      </Text>
+      <SmaranPressable
+        onPress={onPress}
+        style={({pressed}) => [
+          styles.featureTile,
+          pressed && styles.pressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`${title}. ${subtitle}`}>
 
-      <Text
-        style={styles.featureSubtitle}
-        numberOfLines={2}>
-        {subtitle}
-      </Text>
+        <View
+          style={[
+            styles.featureIcon,
+            {
+              backgroundColor: background,
+            },
+          ]}>
 
-      <Text style={styles.featureArrow}>›</Text>
-    </SmaranPressable>
+          <Icon
+            name={icon}
+            size={24}
+            color={COLORS.primaryDark}
+            strokeWidth={2.05}
+          />
+        </View>
+
+        <Text
+          style={styles.featureTitle}
+          numberOfLines={2}>
+          {title}
+        </Text>
+
+        <Text
+          style={styles.featureSubtitle}
+          numberOfLines={2}>
+          {subtitle}
+        </Text>
+
+        <Text style={styles.featureArrow}>
+          ›
+        </Text>
+      </SmaranPressable>
     </SmaranAnimated>
   );
 }
@@ -580,80 +612,108 @@ function FeatureTile({
 /* Plan Card                                                                  */
 /* -------------------------------------------------------------------------- */
 
-function PlanCard({item, onToggle, delay = 720}) {
+function PlanCard({
+  item,
+  onToggle,
+  delay = 720,
+}) {
   const isDone = Boolean(item?.done);
 
   return (
-    <SmaranAnimated delay={delay} duration={520} distance={18} style={styles.fullMotion}>
-    <View style={styles.planCard}>
-      <View
-        style={[
-          styles.planIcon,
-          isDone && styles.planIconDone,
-        ]}>
-        <Icon
-          name="clock"
-          size={25}
-          color={COLORS.primaryDark}
-          strokeWidth={2.05}
-        />
-      </View>
+    <SmaranAnimated
+      delay={delay}
+      duration={520}
+      distance={18}
+      style={styles.fullMotion}>
 
-      <SmaranPressable
-        onPress={onToggle}
-        style={styles.planMain}
-        accessibilityRole="button"
-        accessibilityLabel={`${isDone ? 'Completed' : 'Pending'} ${
-          item?.title || 'reminder'
-        }`}>
-        
-        <Text style={styles.planTime}>
-          {item?.time || 'Scheduled'}
-        </Text>
+      <View style={styles.planCard}>
 
-        <Text
+        {/* ================================================================ */}
+        {/* LEFT REMINDER ICON                                                */}
+        {/* ================================================================ */}
+
+        <View
           style={[
-            styles.planItemTitle,
-            isDone && styles.doneTitle,
-          ]}
-          numberOfLines={1}>
-          {item?.title || 'Reminder'}
-        </Text>
+            styles.planIcon,
+            isDone && styles.planIconDone,
+          ]}>
 
-        <Text
-          style={styles.planDetail}
-          numberOfLines={1}>
-          {item?.detail || 'Smaran reminder'}
-        </Text>
-      </SmaranPressable>
+          <Icon
+            name="clock"
+            size={25}
+            color={COLORS.primaryDark}
+            strokeWidth={2.05}
+          />
+        </View>
 
-      <SmaranPressable
-        onPress={onToggle}
-        style={[
-          styles.planButton,
-          isDone
-            ? styles.doneButton
-            : styles.remindButton,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={
-          isDone
-            ? `Mark ${item?.title || 'reminder'} as pending`
-            : `Remind me about ${item?.title || 'reminder'}`
-        }>
-        
-        <Icon
-          name={isDone ? 'check' : 'bell'}
-          size={18}
-          color={COLORS.white}
-          strokeWidth={2.5}
-        />
+        {/* ================================================================ */}
+        {/* REMINDER CONTENT                                                  */}
+        {/* ================================================================ */}
 
-        <Text style={styles.planButtonText}>
-          {isDone ? "I'm Done" : 'Remind Me'}
-        </Text>
-      </SmaranPressable>
-    </View>
+        <SmaranPressable
+          onPress={onToggle}
+          style={styles.planMain}
+          accessibilityRole="button"
+          accessibilityLabel={`${isDone ? 'Completed' : 'Pending'} ${
+            item?.title || 'reminder'
+          }`}>
+
+          <Text style={styles.planTime}>
+            {item?.time || 'Scheduled'}
+          </Text>
+
+          <Text
+            style={[
+              styles.planItemTitle,
+              isDone && styles.doneTitle,
+            ]}>
+
+            {item?.title || 'Reminder'}
+          </Text>
+
+          <Text style={styles.planDetail}>
+            {item?.detail || 'Smaran reminder'}
+          </Text>
+        </SmaranPressable>
+
+        {/* ================================================================ */}
+        {/* FIXED RIGHT-SIDE BUTTON                                           */}
+        {/* ================================================================ */}
+
+        <View style={styles.planButtonColumn}>
+          <SmaranPressable
+            onPress={onToggle}
+            style={[
+              styles.planButton,
+              isDone
+                ? styles.doneButton
+                : styles.remindButton,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isDone
+                ? `Mark ${item?.title || 'reminder'} as pending`
+                : `Remind me about ${item?.title || 'reminder'}`
+            }>
+
+            <Icon
+              name={isDone ? 'check' : 'bell'}
+              size={18}
+              color={COLORS.white}
+              strokeWidth={2.5}
+            />
+
+            <Text
+              style={styles.planButtonText}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}>
+
+              {isDone ? "I'm Done" : 'Remind Me'}
+            </Text>
+          </SmaranPressable>
+        </View>
+      </View>
     </SmaranAnimated>
   );
 }
@@ -691,6 +751,7 @@ const styles = StyleSheet.create({
 
   headerCopy: {
     flex: 1,
+    minWidth: 0,
     paddingRight: 10,
   },
 
@@ -749,11 +810,6 @@ const styles = StyleSheet.create({
     ...SHADOW,
   },
 
-  reminderEmoji: {
-    fontSize: 27,
-    lineHeight: 32,
-  },
-
   badge: {
     position: 'absolute',
     right: 5,
@@ -788,7 +844,7 @@ const styles = StyleSheet.create({
   },
 
   featureTile: {
-    width: '48.2%',
+    width: '100%',
     minHeight: 142,
     borderRadius: 21,
     backgroundColor: COLORS.white,
@@ -858,6 +914,7 @@ const styles = StyleSheet.create({
 
   progressCopy: {
     flex: 1,
+    minWidth: 0,
     marginLeft: 10,
     paddingRight: 5,
   },
@@ -922,49 +979,104 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
 
+  /* ====================================================================== */
+  /* PLAN CARD                                                              */
+  /* ====================================================================== */
+
   planCard: {
-    minHeight: 94,
+    width: '100%',
+    minHeight: 128,
+
     borderRadius: 20,
     backgroundColor: COLORS.white,
-    padding: 10,
+
+    paddingVertical: 16,
+    paddingLeft: 12,
+    paddingRight: 12,
+
     marginBottom: 10,
+
     flexDirection: 'row',
     alignItems: 'center',
+
+    /*
+     * The right-side action is absolutely positioned, so text length can
+     * never move the button horizontally.
+     */
+    position: 'relative',
+    overflow: 'hidden',
+
     ...SHADOW,
   },
 
+  /* ---------------------------------------------------------------------- */
+  /* Fixed left icon                                                         */
+  /* ---------------------------------------------------------------------- */
+
   planIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 64,
+    height: 64,
+
+    flexGrow: 0,
+    flexShrink: 0,
+
+    borderRadius: 32,
     backgroundColor: '#E3F0D7',
+
     alignItems: 'center',
     justifyContent: 'center',
+
+    marginRight: 14,
   },
 
   planIconDone: {
     backgroundColor: '#E0F0D7',
   },
 
+  /* ---------------------------------------------------------------------- */
+  /* Flexible reminder information area                                     */
+  /* ---------------------------------------------------------------------- */
+
   planMain: {
-    flex: 1,
-    marginLeft: 10,
-    paddingRight: 5,
+    /*
+     * The reminder content uses every bit of space left after the fixed
+     * icon and the reserved right-side button area.
+     */
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
+
+    /*
+     * 112 = fixed button width
+     * 12  = right card inset
+     * 12  = safety gap between text and button
+     */
+    marginRight: 136,
+
     justifyContent: 'center',
   },
 
   planTime: {
     fontSize: 11,
+    lineHeight: 15,
     color: COLORS.muted,
     fontWeight: '700',
   },
 
   planItemTitle: {
     marginTop: 1,
-    fontSize: 18,
-    lineHeight: 22,
+
+    fontSize: 16,
+    lineHeight: 20,
+
     color: COLORS.text,
     fontWeight: '900',
+
+    /*
+     * Text wraps naturally inside planMain.
+     */
+    flexShrink: 1,
   },
 
   doneTitle: {
@@ -974,16 +1086,56 @@ const styles = StyleSheet.create({
 
   planDetail: {
     marginTop: 1,
-    fontSize: 9.5,
-    lineHeight: 13,
+
+    fontSize: 10,
+    lineHeight: 14,
+
     color: COLORS.muted,
+
+    flexShrink: 1,
+  },
+
+  /* ---------------------------------------------------------------------- */
+  /* FIXED RIGHT BUTTON                                                     */
+  /* ---------------------------------------------------------------------- */
+
+  planButtonColumn: {
+    /*
+     * IMPORTANT:
+     *
+     * The button is completely removed from the normal horizontal flex
+     * layout and anchored to the card itself.
+     *
+     * This means the reminder title/detail can become longer, wrap onto
+     * multiple lines, and increase the card height without ever changing
+     * the button's horizontal position.
+     */
+    position: 'absolute',
+
+    top: 0,
+    right: 12,
+    bottom: 0,
+
+    width: 112,
+
+    flexGrow: 0,
+    flexShrink: 0,
+
+    alignItems: 'stretch',
+    justifyContent: 'center',
   },
 
   planButton: {
-    minWidth: 105,
-    minHeight: 44,
-    borderRadius: 15,
-    paddingHorizontal: 10,
+    width: '100%',
+    minHeight: 58,
+
+    flexGrow: 0,
+    flexShrink: 0,
+
+    borderRadius: 22,
+
+    paddingHorizontal: 9,
+
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -999,9 +1151,18 @@ const styles = StyleSheet.create({
 
   planButtonText: {
     marginLeft: 6,
+
     color: COLORS.white,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '900',
+
+    textAlign: 'center',
+
+    /*
+     * Only the text INSIDE the button can shrink.
+     * The button itself cannot shrink.
+     */
+    flexShrink: 1,
   },
 
   /* ====================================================================== */
@@ -1029,6 +1190,7 @@ const styles = StyleSheet.create({
 
   emptyCopy: {
     flex: 1,
+    minWidth: 0,
     marginLeft: 10,
   },
 
@@ -1074,6 +1236,7 @@ const styles = StyleSheet.create({
   aiReminderTitleCopy: {
     marginLeft: 9,
     flex: 1,
+    minWidth: 0,
   },
 
   aiReminderTitle: {
@@ -1118,6 +1281,7 @@ const styles = StyleSheet.create({
 
   composerInput: {
     flex: 1,
+    minWidth: 0,
     height: 50,
     marginLeft: 6,
     paddingVertical: 0,
@@ -1128,6 +1292,7 @@ const styles = StyleSheet.create({
   composerAction: {
     width: 44,
     height: 44,
+    flexShrink: 0,
     borderRadius: 22,
     marginLeft: 4,
     alignItems: 'center',
@@ -1163,6 +1328,10 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     fontWeight: '600',
   },
+
+  /* ====================================================================== */
+  /* MOTION                                                                 */
+  /* ====================================================================== */
 
   motionHeader: {
     width: '100%',
